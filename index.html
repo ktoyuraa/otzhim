@@ -135,7 +135,7 @@ button:focus-visible{outline:3px solid var(--charge);outline-offset:3px}
     <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
   </div>
   <p id="starterr" class="err"></p>
-  <p class="ver">версия 3 · проверка упора лёжа включена</p>
+  <p class="ver">версия 4 · счёт по ближней к камере стороне</p>
 </section>
 
 <section id="cal" class="screen">
@@ -185,7 +185,7 @@ button:focus-visible{outline:3px solid var(--charge);outline-offset:3px}
 import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
 /* ═══ константы ═══ */
-const VIS_MIN=0.55, MIN_REP_MS=450, HOLD_MS=2000;
+const VIS_MIN=0.50, MIN_REP_MS=450, HOLD_MS=2000;
 const HIP_RATIO_MIN=0.40;   // таз должен пройти ≥40% пути плеч
 const TILT_MAX=20;          // отклонение корпуса от калиброванной планки
 const PLANK_MAX=40;         // корпус обязан быть близок к горизонтали
@@ -248,12 +248,21 @@ function ang(a,b,c){
 }
 function mid(lm,i,j){return {x:(lm[i].x+lm[j].x)/2,y:(lm[i].y+lm[j].y)/2};}
 
+const LEFT={sh:11,el:13,wr:15,hip:23}, RIGHT={sh:12,el:14,wr:16,hip:24};
+let SIDE=null;                     // фиксируется на подход, чтобы не скакать
+
+function bestSide(lm){
+  const sc=o=>[o.sh,o.el,o.wr,o.hip].reduce((a,i)=>a+(lm[i]?.visibility??0),0);
+  return sc(LEFT)>=sc(RIGHT)?LEFT:RIGHT;
+}
+function sideOK(lm,o){
+  return [o.sh,o.el,o.wr,o.hip].every(i=>(lm[i]?.visibility??0)>=VIS_MIN);
+}
+
 function read(lm){
-  const sc=s=>lm[s[0]].visibility+lm[s[1]].visibility+lm[s[2]].visibility;
-  const L=[11,13,15],R=[12,14,16];
-  const arm=sc(L)>=sc(R)?L:R;
-  const elbow=ang(lm[arm[0]],lm[arm[1]],lm[arm[2]]);
-  const sh=mid(lm,11,12), hip=mid(lm,23,24), wr=mid(lm,15,16);
+  const o=SIDE||bestSide(lm);
+  const elbow=ang(lm[o.sh],lm[o.el],lm[o.wr]);
+  const sh=lm[o.sh], hip=lm[o.hip], wr=lm[o.wr];
   const dx=(hip.x-sh.x)*aspect, dy=hip.y-sh.y;
   let tilt=Math.abs(Math.atan2(dy,dx)*180/Math.PI);
   if(tilt>90) tilt=180-tilt;                 // 0° = корпус горизонтален
@@ -289,7 +298,8 @@ function drawBones(lm,ok){
   });
   ctx.globalAlpha=1;
 
-  KEY.forEach(i=>{
+  const shown=SIDE?[SIDE.sh,SIDE.el,SIDE.wr,SIDE.hip]:KEY;
+  shown.forEach(i=>{
     const p=lm[i]; if(!p||(p.visibility??0)<0.3) return;
     const r=Math.max(4,7*k);
     ctx.beginPath();ctx.arc(X(p),Y(p),r,0,7);
@@ -300,9 +310,8 @@ function drawBones(lm,ok){
 
   // угол локтя цифрой рядом с суставом
   if(ok){
-    const sc=a=>lm[a[0]].visibility+lm[a[1]].visibility+lm[a[2]].visibility;
-    const L=[11,13,15],R=[12,14,16], arm=sc(L)>=sc(R)?L:R;
-    const e=lm[arm[1]], deg=Math.round(ang(lm[arm[0]],e,lm[arm[2]]));
+    const o=SIDE||bestSide(lm);
+    const e=lm[o.el], deg=Math.round(ang(lm[o.sh],e,lm[o.wr]));
     const t=deg+'\u00B0', fs=Math.max(13,20*k);
     ctx.font='600 '+fs+'px "IBM Plex Mono",monospace';
     const tw=ctx.measureText(t).width, x=X(e)+14*k, y=Y(e)-14*k;
@@ -391,7 +400,8 @@ function tickLoop(){
 
   const now=performance.now();
   const lm=landmarker.detectForVideo(v,now).landmarks?.[0];
-  const ok=!!lm&&KEY.every(i=>(lm[i]?.visibility??0)>=VIS_MIN);
+  if(lm&&!SIDE&&phase!=='counting') SIDE=bestSide(lm);
+  const ok=!!lm&&sideOK(lm,SIDE||bestSide(lm));
   el.cam.classList.toggle('lost',!ok);
   if(ok&&phase!=='idle'){const q=read(lm);el.cam.classList.toggle('good',q.tilt<=PLANK_MAX&&q.onFloor);}
   else el.cam.classList.remove('good');
@@ -483,6 +493,7 @@ function countdown(){
 }
 
 function startFlow(skipCal){
+  SIDE=null;
   show('cal'); holdStart=0; el.barfill.style.width='0%';
   if(skipCal&&C){ el.calstage.textContent='Готово'; countdown(); }
   else{ el.calstage.textContent='Шаг 2 из 3'; phase='cal1'; }

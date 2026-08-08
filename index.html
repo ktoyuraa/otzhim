@@ -104,7 +104,8 @@ button:focus-visible{outline:3px solid var(--charge);outline-offset:3px}
 #cam.s{width:24vmin;max-width:170px}
 #cam.m{width:40vmin;max-width:300px}
 #cam.l{width:58vmin;max-width:460px}
-#cam.lost{border-color:var(--sag);border-width:2px}
+#cam.lost{border-color:var(--sag);border-width:3px}
+#cam.good{border-color:var(--lock);border-width:3px}
 #cam video,#cam canvas{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
 #cam video{transform:scaleX(-1)}
 #cam canvas{position:absolute;inset:0;height:100%}
@@ -121,7 +122,7 @@ button:focus-visible{outline:3px solid var(--charge);outline-offset:3px}
   <p class="lede">Повторение засчитывается, только если таз опускается вместе с плечами. Лечь животом на пол и подниматься корпусом не получится — такие попытки отклоняются.</p>
   <ul class="setup">
     <li data-n="01">Телефон на бок в 1,5–2 м сбоку, экраном к себе</li>
-    <li data-n="02">Отжимайтесь боком к камере: видно локоть, таз и колено</li>
+    <li data-n="02">Строго боком к камере — лицом счёт работать не будет</li>
     <li data-n="03">Перед первым подходом — калибровка, две позы по 2 секунды</li>
   </ul>
   <div class="row">
@@ -145,6 +146,7 @@ button:focus-visible{outline:3px solid var(--charge);outline-offset:3px}
 <section id="live" class="screen">
   <div class="strip">
     <div class="cell">Локоть<b id="elbow">—</b></div>
+    <div class="cell">Корпус<b id="tiltm">—</b></div>
     <div class="cell">Таз<b id="hipm">—</b></div>
     <div class="cell">Очки<b id="score">0</b></div>
   </div>
@@ -183,6 +185,7 @@ import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@m
 const VIS_MIN=0.55, MIN_REP_MS=450, HOLD_MS=2000;
 const HIP_RATIO_MIN=0.40;   // таз должен пройти ≥40% пути плеч
 const TILT_MAX=20;          // отклонение корпуса от калиброванной планки
+const PLANK_MAX=40;         // корпус обязан быть близок к горизонтали
 const KEY=[11,12,13,14,15,16,23,24];
 const BONES=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23,25],[24,26]];
 
@@ -190,7 +193,7 @@ const $=id=>document.getElementById(id);
 const el={};
 ['go','starterr','voice','recal','cancel','stop','again','redo','home','calstage','calmsg',
  'barfill','tick','count','elbow','hipm','score','combo','reject','fill','column','cam',
- 'preview','bones','dReps','dScore','dDeep','dBad'].forEach(k=>el[k]=$(k));
+ 'preview','bones','tiltm','dReps','dScore','dDeep','dBad'].forEach(k=>el[k]=$(k));
 const ctx=el.bones.getContext('2d');
 
 let landmarker=null,stream=null,raf=null,wakeLock=null;
@@ -256,19 +259,53 @@ function read(lm){
 
 /* ═══ скелет поверх видео ═══ */
 function drawBones(lm,ok){
-  const w=el.bones.width, h=el.bones.height;
+  const w=el.bones.width,h=el.bones.height;
   ctx.clearRect(0,0,w,h);
   if(!lm) return;
-  const X=p=>(1-p.x)*w, Y=p=>p.y*h;      // зеркалим под превью
-  ctx.lineWidth=Math.max(2,w/110);
-  ctx.strokeStyle=ok?'#2B59FF':'#E0451B';
-  BONES.forEach(([a,b])=>{
-    if(!lm[a]||!lm[b])return;
-    ctx.beginPath();ctx.moveTo(X(lm[a]),Y(lm[a]));ctx.lineTo(X(lm[b]),Y(lm[b]));ctx.stroke();
+  const X=p=>(1-p.x)*w, Y=p=>p.y*h;          // зеркалим под превью
+  const k=w/640, lw=Math.max(3,5*k);
+
+  const groups=[
+    {c:'#2B59FF', b:[[11,13],[13,15],[12,14],[14,16]]},   // руки
+    {c:'#16191C', b:[[11,12],[11,23],[12,24],[23,24]]},   // корпус
+    {c:'#7A8288', b:[[23,25],[24,26],[25,27],[26,28]]}    // ноги
+  ];
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  groups.forEach(g=>{
+    g.b.forEach(([a,b])=>{
+      const A=lm[a],B=lm[b]; if(!A||!B) return;
+      const v=Math.min(A.visibility??0,B.visibility??0);
+      if(v<0.3) return;
+      ctx.globalAlpha=Math.min(1,v+0.25);
+      ctx.strokeStyle=ok?g.c:'#E0451B';
+      ctx.lineWidth=lw;
+      ctx.beginPath();ctx.moveTo(X(A),Y(A));ctx.lineTo(X(B),Y(B));ctx.stroke();
+    });
   });
-  ctx.fillStyle=ok?'#0FA958':'#E0451B';
-  KEY.forEach(i=>{ if(!lm[i])return;
-    ctx.beginPath();ctx.arc(X(lm[i]),Y(lm[i]),Math.max(3,w/70),0,7);ctx.fill(); });
+  ctx.globalAlpha=1;
+
+  KEY.forEach(i=>{
+    const p=lm[i]; if(!p||(p.visibility??0)<0.3) return;
+    const r=Math.max(4,7*k);
+    ctx.beginPath();ctx.arc(X(p),Y(p),r,0,7);
+    ctx.fillStyle='#fff';ctx.fill();
+    ctx.lineWidth=Math.max(2,3*k);
+    ctx.strokeStyle=ok?'#0FA958':'#E0451B';ctx.stroke();
+  });
+
+  // угол локтя цифрой рядом с суставом
+  if(ok){
+    const sc=a=>lm[a[0]].visibility+lm[a[1]].visibility+lm[a[2]].visibility;
+    const L=[11,13,15],R=[12,14,16], arm=sc(L)>=sc(R)?L:R;
+    const e=lm[arm[1]], deg=Math.round(ang(lm[arm[0]],e,lm[arm[2]]));
+    const t=deg+'\u00B0', fs=Math.max(13,20*k);
+    ctx.font='600 '+fs+'px "IBM Plex Mono",monospace';
+    const tw=ctx.measureText(t).width, x=X(e)+14*k, y=Y(e)-14*k;
+    ctx.fillStyle='rgba(22,25,28,.85)';
+    ctx.fillRect(x-5*k,y-fs,tw+10*k,fs*1.35);
+    ctx.fillStyle='#EEF0EF';ctx.textBaseline='alphabetic';
+    ctx.fillText(t,x,y+fs*0.18);
+  }
 }
 
 /* ═══ колонка ═══ */
@@ -351,6 +388,7 @@ function tickLoop(){
   const lm=landmarker.detectForVideo(v,now).landmarks?.[0];
   const ok=!!lm&&KEY.every(i=>(lm[i]?.visibility??0)>=VIS_MIN);
   el.cam.classList.toggle('lost',!ok);
+  el.cam.classList.toggle('good',ok&&phase!=='idle'&&read(lm).tilt<=PLANK_MAX);
   drawBones(lm,ok);
 
   if(phase==='idle') return;
@@ -362,6 +400,11 @@ function tickLoop(){
   const m=read(lm);
 
   if(phase==='cal1'||phase==='cal2'){
+    if(m.tilt>PLANK_MAX){
+      holdStart=0; el.barfill.style.width='0%';
+      el.calmsg.innerHTML='Корпус вертикальный.<br><b>Встаньте в упор лёжа, боком к камере.</b>';
+      return;
+    }
     if(!holdStart) holdStart=now;
     const p=Math.min(1,(now-holdStart)/HOLD_MS);
     el.barfill.style.width=(p*100)+'%';
@@ -387,6 +430,19 @@ function tickLoop(){
   }
 
   if(phase!=='counting') return;
+
+  el.tiltm.textContent=Math.round(m.tilt)+'\u00B0';
+  const plank=m.tilt<=PLANK_MAX;
+  el.tiltm.className=plank?'':'bad';
+  if(!plank){
+    S.state='up'; el.fill.style.height='0%';
+    el.column.classList.remove('deep'); el.column.classList.add('sag');
+    el.reject.textContent='нужен упор лёжа';
+    el.reject.classList.add('on');
+    el.elbow.textContent='—'; el.hipm.textContent='—';
+    return;
+  }
+  el.reject.classList.remove('on');
 
   const hipOK = S.state==='up' || (S.shMin-S.shTop<0.01) ||
                 (S.hipMin-S.hipTop)/(S.shMin-S.shTop)>=HIP_RATIO_MIN;

@@ -140,7 +140,7 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
   </div>
   <div class="row"><button class="ghost" id="recal" style="display:none">Сбросить калибровку</button></div>
   <p id="err" class="err"></p>
-  <p class="ver">версия 8 · кадр целиком, без обрезки</p>
+  <p class="ver">версия 9 · счёт лицом к камере</p>
 </section>
 
 <section id="done" class="sheet">
@@ -276,7 +276,6 @@ function hint(html,bad){
 function poseOK(m){
   if(!C) return true;
   if(Math.abs(m.shape-C.shape)>SHAPE_TOL) return 'встаньте в упор лёжа';
-  if(m.hands < C.hands-0.35) return 'обопритесь руками о пол';
   return true;
 }
 
@@ -303,14 +302,12 @@ function engine(m,now){
 
 function judge(m,now){
   S.lastRep=now;
-  const dSh=S.shMin-S.shTop, dHip=S.hipMin-S.hipTop;
-  const follow = dSh>0.005 ? dHip/dSh : 0;
+  const dSh=S.shMin-S.shTop;
   const rng=Math.max(0.02,C.bot-C.top);
 
   let fail=null;
   if(S.shapeBad) fail='корпус не в линию';
-  else if(follow<HIP_FOLLOW) fail='таз не опускался';
-  else if(S.shMin-S.shTop < rng*0.45) fail='слишком мелко';
+  else if(dSh < rng*0.45) fail='слишком мелко';
 
   if(fail){
     S.bad++;S.combo=1;

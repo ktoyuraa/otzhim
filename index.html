@@ -2,172 +2,154 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<meta name="theme-color" content="#EEF0EF">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0B0D0F">
 <meta http-equiv="Cache-Control" content="no-store">
-<title>ОТЖИМ — счётчик по камере</title>
+<title>ОТЖИМ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --chalk:#EEF0EF; --iron:#16191C; --slate:#7A8288; --hair:#D2D6D7;
-  --charge:#2B59FF; --lock:#0FA958; --sag:#E0451B;
-  --col:6.5vmin;
+  --ink:#0B0D0F; --paper:#F2F4F5; --dim:#98A0A6;
+  --hi:#22DD6E; --mid:#3B82F6; --lo:#EF4444; --gold:#FFC44D;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden}
-body{
-  background:var(--chalk);color:var(--iron);font-family:Inter,system-ui,sans-serif;
-  padding-left:var(--col);
-  padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);
-}
+html,body{height:100%;overflow:hidden;background:var(--ink)}
+body{font-family:Inter,system-ui,sans-serif;color:var(--paper)}
 
-#column{position:fixed;left:0;top:0;bottom:0;width:var(--col);
-  background:#E1E4E5;border-right:1px solid var(--hair);z-index:40;overflow:hidden}
-#fill{position:absolute;left:0;right:0;bottom:0;height:0;background:var(--charge)}
-#markline{position:absolute;left:0;right:0;bottom:70%;height:2px;background:var(--iron);opacity:.35}
-#column.deep #fill{background:var(--lock)}
-#column.sag #fill{background:var(--sag)}
+/* ── камера во весь экран ── */
+#stage{position:fixed;inset:0;background:#000}
+#vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#skel{position:absolute;inset:0;width:100%;height:100%}
+#vignette{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.72) 0%,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 68%,rgba(0,0,0,.78) 100%)}
+#stage.hide{display:none}
 
-.screen{position:fixed;inset:0;left:var(--col);display:none;flex-direction:column;z-index:10}
-.screen.on{display:flex}
+/* ── полоса глубины слева, как в референсе ── */
+#gauge{position:absolute;left:3.5vw;top:22vh;bottom:22vh;width:22px;border-radius:11px;
+  background:linear-gradient(180deg,var(--lo) 0 34%,var(--mid) 34% 72%,var(--hi) 72% 100%);
+  box-shadow:0 2px 18px rgba(0,0,0,.5);opacity:.9;display:none}
+#gauge.on{display:block}
+#ball{position:absolute;left:50%;width:30px;height:30px;margin-left:-15px;margin-top:-15px;
+  border-radius:50%;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.55);top:0;
+  transition:top .05s linear}
+#zone{position:absolute;left:-6px;right:-6px;height:2px;background:rgba(255,255,255,.85);bottom:28%}
 
-#start{justify-content:center;padding:5vmin 6vmin;gap:3vmin;overflow-y:auto}
-h1{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,8.5vmin,60px);line-height:.92;letter-spacing:-.02em}
-h1 em{font-style:normal;color:var(--charge)}
-.lede{font-size:clamp(13px,2.5vmin,17px);color:var(--slate);max-width:44ch;line-height:1.5}
-.setup{list-style:none;display:flex;flex-direction:column;gap:1.2vmin;max-width:46ch}
-.setup li{font-family:'IBM Plex Mono',monospace;font-size:clamp(11px,2.1vmin,14px);
-  padding-left:3.6ch;position:relative;line-height:1.45}
-.setup li::before{content:attr(data-n);position:absolute;left:0;top:0;color:var(--charge);font-weight:600}
+/* ── верхний HUD ── */
+#hud{position:absolute;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top) + 14px) 16px 0;
+  display:none;align-items:flex-start;justify-content:space-between;gap:12px}
+#hud.on{display:flex}
+.hudcell{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim);text-shadow:0 1px 6px rgba(0,0,0,.9)}
+.hudcell b{display:block;font-family:'Archivo Black',sans-serif;font-size:34px;
+  color:var(--paper);letter-spacing:-.02em;line-height:1.05;margin-top:2px;
+  text-shadow:0 2px 12px rgba(0,0,0,.85)}
+.hudcell b.big{font-size:56px;color:var(--hi)}
+.hudcell.r{text-align:right}
 
-button{font-family:'IBM Plex Mono',monospace;font-weight:600;letter-spacing:.09em;
-  text-transform:uppercase;cursor:pointer;border:none;border-radius:0}
-#go{background:var(--iron);color:var(--chalk);font-size:clamp(13px,2.5vmin,16px);
-  padding:2.2vmin 4vmin;align-self:flex-start}
-#go:active{background:var(--charge)}
-#go:disabled{background:var(--slate);cursor:wait}
-button:focus-visible{outline:3px solid var(--charge);outline-offset:3px}
-.ghost{background:none;color:var(--slate);border:1px solid var(--hair);
-  font-size:clamp(10px,1.9vmin,12px);padding:1.4vmin 2.6vmin}
-.row{display:flex;gap:1.4vmin;flex-wrap:wrap;align-items:center}
-.ver{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--lock)}
-.err{color:var(--sag);font-family:'IBM Plex Mono',monospace;font-size:13px;max-width:44ch;line-height:1.5}
-.toggle{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--slate);display:flex;align-items:center;gap:1ch;cursor:pointer}
-.toggle input{accent-color:var(--charge);width:16px;height:16px}
+/* ── центральные подсказки поверх камеры ── */
+#hint{position:absolute;left:0;right:0;top:46%;text-align:center;padding:0 12vw;
+  pointer-events:none;font-family:'IBM Plex Mono',monospace;font-weight:600;
+  font-size:clamp(14px,4.2vw,20px);line-height:1.5;letter-spacing:.04em;
+  text-shadow:0 2px 14px rgba(0,0,0,.95);display:none}
+#hint.on{display:block}
+#hint.bad{color:var(--lo)}
+#hint em{font-style:normal;color:var(--gold)}
+#tick{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  font-family:'Archivo Black',sans-serif;font-size:34vh;color:var(--hi);
+  text-shadow:0 4px 40px rgba(0,0,0,.9)}
+#tick.on{display:flex}
+#bar{position:absolute;left:12vw;right:12vw;bottom:20vh;height:5px;
+  background:rgba(255,255,255,.25);border-radius:3px;display:none;overflow:hidden}
+#bar.on{display:block}
+#barfill{height:100%;width:0;background:var(--hi)}
 
-/* калибровка и наводка */
-#cal{align-items:center;justify-content:center;gap:2.4vmin;padding:5vmin;text-align:center}
-#calstage{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--charge)}
-#calmsg{font-family:'IBM Plex Mono',monospace;font-size:clamp(13px,2.9vmin,20px);
-  line-height:1.5;max-width:32ch}
-#calmsg b{color:var(--sag);font-weight:600}
-#bar{width:min(60vw,340px);height:6px;background:var(--hair)}
-#barfill{height:100%;width:0;background:var(--charge)}
-#tick{font-family:'Archivo Black',sans-serif;font-size:22vmin;line-height:1;color:var(--charge)}
+/* ── нижняя кнопка ── */
+#bottom{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 18px);
+  display:none;justify-content:center}
+#bottom.on{display:flex}
+button{font-family:'IBM Plex Mono',monospace;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;cursor:pointer;border:none;border-radius:999px}
+#stopb{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.4);
+  backdrop-filter:blur(8px);font-size:12px;padding:13px 26px}
 
-/* тренировка */
-#live{padding:2.2vmin 3vmin}
-.strip{display:flex;justify-content:space-between;align-items:flex-start;gap:2vmin;
-  font-family:'IBM Plex Mono',monospace;font-size:clamp(9px,1.8vmin,12px);
-  letter-spacing:.11em;text-transform:uppercase;color:var(--slate)}
-.cell b{display:block;font-size:clamp(14px,3.2vmin,22px);color:var(--iron);letter-spacing:0;margin-top:.4vmin}
-.cell b.hot{color:var(--charge)} .cell b.bad{color:var(--sag)}
-#count{flex:1;display:flex;align-items:center;justify-content:center;
-  font-family:'Archivo Black',sans-serif;font-size:38vmin;line-height:.8;
-  letter-spacing:-.045em;font-variant-numeric:tabular-nums;transition:transform .08s ease-out}
-#count.pop{transform:scale(1.06)}
-#count.deep{color:var(--lock)}
-#reject{position:absolute;left:0;right:0;top:38%;text-align:center;pointer-events:none;
-  font-family:'IBM Plex Mono',monospace;font-weight:600;letter-spacing:.1em;
-  text-transform:uppercase;font-size:clamp(13px,3vmin,20px);color:var(--sag);opacity:0;
-  transition:opacity .15s}
-#reject.on{opacity:1}
-.footrow{display:flex;justify-content:space-between;align-items:flex-end;gap:2vmin}
-#combo{font-family:'Archivo Black',sans-serif;font-size:clamp(16px,4.6vmin,34px);
-  color:var(--charge);opacity:0;transition:opacity .2s;letter-spacing:-.02em}
-#combo.on{opacity:1}
-
-#done{justify-content:center;padding:5vmin 6vmin;gap:2.2vmin;overflow-y:auto}
-#done h2{font-family:'Archivo Black',sans-serif;font-size:clamp(24px,6.5vmin,46px);letter-spacing:-.02em;line-height:1}
-.stats{display:flex;flex-wrap:wrap;gap:4vmin 6vmin;margin:1vmin 0 2vmin}
-.stat{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--slate)}
-.stat b{display:block;font-family:'Archivo Black',sans-serif;font-size:clamp(22px,6vmin,42px);
-  color:var(--iron);letter-spacing:-.02em;margin-top:.5vmin}
-.stat.warn b{color:var(--sag)}
-
-/* превью — теперь крупное, со скелетом, тап меняет размер */
-#cam{position:fixed;right:2vmin;bottom:2vmin;z-index:30;display:none;
-  border:1px solid var(--hair);background:#000;line-height:0;cursor:pointer}
-#cam.on{display:block}
-#cam.s{width:24vmin;max-width:170px}
-#cam.m{width:40vmin;max-width:300px}
-#cam.l{width:58vmin;max-width:460px}
-#cam.lost{border-color:var(--sag);border-width:3px}
-#cam.good{border-color:var(--lock);border-width:3px}
-#cam video,#cam canvas{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
-#cam video{transform:scaleX(-1)}
-#cam canvas{position:absolute;inset:0;height:100%}
-
-@media (prefers-reduced-motion:reduce){#count,#combo,#reject{transition:none}}
+/* ── стартовый и итоговый экраны ── */
+.sheet{position:fixed;inset:0;background:var(--ink);z-index:20;display:none;
+  flex-direction:column;justify-content:center;gap:18px;padding:8vh 8vw;overflow-y:auto}
+.sheet.on{display:flex}
+h1{font-family:'Archivo Black',sans-serif;font-size:clamp(34px,12vw,62px);line-height:.9;letter-spacing:-.03em}
+h1 em{font-style:normal;color:var(--hi)}
+.lede{color:var(--dim);font-size:15px;line-height:1.55;max-width:38ch}
+.steps{list-style:none;display:flex;flex-direction:column;gap:9px}
+.steps li{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--paper);
+  padding-left:3.4ch;position:relative;line-height:1.5;opacity:.85}
+.steps li::before{content:attr(data-n);position:absolute;left:0;color:var(--hi);font-weight:600}
+#go{background:var(--hi);color:#04160B;font-size:14px;padding:17px 34px;align-self:flex-start}
+#go:disabled{background:#2A3238;color:var(--dim)}
+.ghost{background:none;color:var(--dim);border:1px solid #2A3238;font-size:11px;padding:12px 20px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.ver{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--hi);opacity:.8}
+.err{color:var(--lo);font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.5}
+.tg{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:9px;cursor:pointer}
+.tg input{accent-color:var(--hi);width:17px;height:17px}
+h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-spacing:-.02em}
+.grid{display:flex;flex-wrap:wrap;gap:22px 34px;margin:6px 0 10px}
+.st{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--dim)}
+.st b{display:block;font-family:'Archivo Black',sans-serif;font-size:40px;
+  color:var(--paper);letter-spacing:-.02em;margin-top:4px}
+.st.w b{color:var(--lo)}
+@media (prefers-reduced-motion:reduce){#ball{transition:none}}
 </style>
 </head>
 <body>
 
-<div id="column"><div id="markline"></div><div id="fill"></div></div>
+<div id="stage">
+  <video id="vid" playsinline muted autoplay></video>
+  <canvas id="skel"></canvas>
+  <div id="vignette"></div>
 
-<section id="start" class="screen on">
-  <h1>СЧИТАЙ<br><em>ОТЖИМАНИЯ</em><br>КАМЕРОЙ</h1>
-  <p class="lede">Повторение засчитывается, только если таз опускается вместе с плечами. Лечь животом на пол и подниматься корпусом не получится — такие попытки отклоняются.</p>
-  <ul class="setup">
-    <li data-n="01">Телефон на бок в 1,5–2 м сбоку, экраном к себе</li>
-    <li data-n="02">Строго боком к камере — лицом счёт работать не будет</li>
-    <li data-n="03">Перед первым подходом — калибровка, две позы по 2 секунды</li>
-  </ul>
-  <div class="row">
-    <button id="go">Включить камеру</button>
-    <label class="toggle"><input type="checkbox" id="voice"> Голосом</label>
-  </div>
-  <div class="row">
-    <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
-  </div>
-  <p id="starterr" class="err"></p>
-  <p class="ver">версия 4 · счёт по ближней к камере стороне</p>
-</section>
+  <div id="gauge"><div id="zone"></div><div id="ball"></div></div>
 
-<section id="cal" class="screen">
-  <div id="calstage">Шаг 1 из 3</div>
-  <p id="calmsg">Загружаю модель…</p>
+  <div id="hud">
+    <div class="hudcell">Повторений<b id="reps" class="big">0</b></div>
+    <div class="hudcell">Время<b id="clock">0:00</b></div>
+    <div class="hudcell r">Очки<b id="score">0</b></div>
+  </div>
+
+  <div id="hint"></div>
   <div id="bar"><div id="barfill"></div></div>
   <div id="tick"></div>
-  <button class="ghost" id="cancel">Отмена</button>
+  <div id="bottom"><button id="stopb">Закончить</button></div>
+</div>
+
+<section id="start" class="sheet on">
+  <h1>ОТ<em>ЖИМ</em></h1>
+  <p class="lede">Телефон стоит перед вами, камера видит вас целиком. Счёт идёт по ходу плеч, поэтому работает и лицом к камере, и боком.</p>
+  <ul class="steps">
+    <li data-n="01">Поставьте телефон в 1,5–2 м, экраном к себе</li>
+    <li data-n="02">Проверьте, что в кадр попадают плечи, таз и колени</li>
+    <li data-n="03">Калибровка: верхняя точка и нижняя, по 2 секунды</li>
+  </ul>
+  <div class="row">
+    <button id="go">Начать</button>
+    <label class="tg"><input type="checkbox" id="voice"> Голосом</label>
+  </div>
+  <div class="row"><button class="ghost" id="recal" style="display:none">Сбросить калибровку</button></div>
+  <p id="err" class="err"></p>
+  <p class="ver">версия 6 · камера во весь экран</p>
 </section>
 
-<section id="live" class="screen">
-  <div class="strip">
-    <div class="cell">Локоть<b id="elbow">—</b></div>
-    <div class="cell">Корпус<b id="tiltm">—</b></div>
-    <div class="cell">Таз<b id="hipm">—</b></div>
-    <div class="cell">Очки<b id="score">0</b></div>
-  </div>
-  <div id="count">0</div>
-  <div id="reject"></div>
-  <div class="footrow">
-    <div id="combo">×1.0</div>
-    <button class="ghost" id="stop">Закончить</button>
-  </div>
-</section>
-
-<section id="done" class="screen">
+<section id="done" class="sheet">
   <h2>Подход закрыт</h2>
-  <div class="stats">
-    <div class="stat">Повторений<b id="dReps">0</b></div>
-    <div class="stat">Очки<b id="dScore">0</b></div>
-    <div class="stat">Глубоких<b id="dDeep">0</b></div>
-    <div class="stat warn">Отклонено<b id="dBad">0</b></div>
+  <div class="grid">
+    <div class="st">Повторений<b id="dR">0</b></div>
+    <div class="st">Очки<b id="dS">0</b></div>
+    <div class="st">Время<b id="dT">0:00</b></div>
+    <div class="st w">Отклонено<b id="dB">0</b></div>
   </div>
   <div class="row">
     <button id="again">Ещё подход</button>
@@ -176,387 +158,305 @@ button:focus-visible{outline:3px solid var(--charge);outline-offset:3px}
   </div>
 </section>
 
-<div id="cam" class="m">
-  <video id="preview" playsinline muted autoplay></video>
-  <canvas id="bones"></canvas>
-</div>
-
 <script type="module">
 import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
-/* ═══ константы ═══ */
-const VIS_MIN=0.50, MIN_REP_MS=450, HOLD_MS=2000;
-const HIP_RATIO_MIN=0.40;   // таз должен пройти ≥40% пути плеч
-const TILT_MAX=20;          // отклонение корпуса от калиброванной планки
-const PLANK_MAX=40;         // корпус обязан быть близок к горизонтали
-const KEY=[11,12,13,14,15,16,23,24];
-const BONES=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23,25],[24,26]];
+const VIS=0.5, HOLD=2000, MIN_REP=420;
+const HIP_FOLLOW=0.35;    // таз проходит долю пути плеч
+const SHAPE_TOL=0.45;     // допуск на пропорцию «корпус / рука»
+const KEYS=[11,12,13,14,15,16,23,24,25,26];
+const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23,25],[24,26],[25,27],[26,28]];
 
-const $=id=>document.getElementById(id);
-const el={};
-['go','starterr','voice','recal','cancel','stop','again','redo','home','calstage','calmsg',
- 'barfill','tick','count','elbow','hipm','score','combo','reject','fill','column','cam',
- 'preview','bones','tiltm','dReps','dScore','dDeep','dBad'].forEach(k=>el[k]=$(k));
-const ctx=el.bones.getContext('2d');
+const $=i=>document.getElementById(i), E={};
+['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
+ 'bottom','stopb','stage','start','done','go','err','recal','voice','again','redo','home',
+ 'dR','dS','dT','dB'].forEach(k=>E[k]=$(k));
+const cx=E.skel.getContext('2d');
 
-let landmarker=null,stream=null,raf=null,wakeLock=null;
-let phase='idle';           // idle | cal1 | cal2 | counting
-let lastVideoTs=-1, holdStart=0, aspect=1;
-let C=null;                 // калибровка
-let S={};
+let lmk=null,stream=null,raf=null,lock=null;
+let phase='idle', lastT=-1, hold=0, t0=0, C=null, S={};
 
-/* ═══ калибровка: загрузка/сохранение ═══ */
-function loadCal(){
-  try{ const r=localStorage.getItem('otzhim.cal'); if(r) C=JSON.parse(r); }catch(e){}
-  el.recal.style.display = C ? '' : 'none';
-}
-function saveCal(){ try{ localStorage.setItem('otzhim.cal',JSON.stringify(C)); }catch(e){} }
-loadCal();
+/* ── калибровка ── */
+try{const r=localStorage.getItem('otzhim6');if(r)C=JSON.parse(r);}catch(e){}
+function showRecal(){E.recal.style.display=C?'':'none'}
+showRecal();
 
 function resetSet(){
-  S={reps:0,score:0,deep:0,bad:0,combo:1,state:'up',
-     minElbow:180,shTop:0,hipTop:0,shMin:0,hipMin:0,maxTilt:0,lastRepAt:0};
+  S={reps:0,score:0,bad:0,combo:1,state:'up',
+     shTop:0,hipTop:0,shMin:0,hipMin:0,shapeBad:false,lastRep:0,deepest:0};
 }
-function show(n){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===n));}
+resetSet();
 
-/* ═══ звук ═══ */
+/* ── звук ── */
 let ac=null;
-function tone(f,ms=90,type='square'){
-  try{
-    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+function tone(f,ms=90,t='square'){
+  try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();
     const o=ac.createOscillator(),g=ac.createGain();
-    o.type=type;o.frequency.value=f;
-    g.gain.setValueAtTime(.15,ac.currentTime);
+    o.type=t;o.frequency.value=f;
+    g.gain.setValueAtTime(.16,ac.currentTime);
     g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+ms/1000);
     o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+ms/1000);
   }catch(e){}
 }
-function say(n){
-  if(!el.voice.checked) return;
-  try{ speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(String(n));
-    u.lang='ru-RU';u.rate=1.4;u.volume=.9;speechSynthesis.speak(u);
-  }catch(e){}
+function say(n){ if(!E.voice.checked)return;
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(n));
+    u.lang='ru-RU';u.rate=1.45;u.volume=.9;speechSynthesis.speak(u);}catch(e){}
 }
 
-/* ═══ геометрия ═══ */
-function ang(a,b,c){
-  const ax=(a.x-b.x)*aspect,ay=a.y-b.y,cx=(c.x-b.x)*aspect,cy=c.y-b.y;
-  const m=Math.hypot(ax,ay)*Math.hypot(cx,cy);
-  if(!m) return 180;
-  return Math.acos(Math.max(-1,Math.min(1,(ax*cx+ay*cy)/m)))*180/Math.PI;
+/* ── измерения, не зависящие от ракурса ── */
+let asp=1;
+const D=(a,b)=>Math.hypot((a.x-b.x)*asp,a.y-b.y);
+function pt(lm,i,j){return {x:(lm[i].x+lm[j].x)/2,y:(lm[i].y+lm[j].y)/2};}
+
+function measure(lm){
+  const sh=pt(lm,11,12), hip=pt(lm,23,24), wr=pt(lm,15,16), kn=pt(lm,25,26);
+  // длина руки как эталон масштаба — видна при любом ракурсе
+  const armL=D(lm[11],lm[13])+D(lm[13],lm[15]);
+  const armR=D(lm[12],lm[14])+D(lm[14],lm[16]);
+  const arm=Math.max(armL,armR)||0.2;
+  return {
+    shY:sh.y, hipY:hip.y,
+    shape:D(sh,hip)/arm,            // пропорция корпус/рука: меняется, если встать
+    hands:(wr.y-sh.y)/arm,          // кисти ниже плеч — опора на пол
+    legs:(kn.y-hip.y)/arm,
+    arm
+  };
 }
-function mid(lm,i,j){return {x:(lm[i].x+lm[j].x)/2,y:(lm[i].y+lm[j].y)/2};}
+function visible(lm){return KEYS.every(i=>(lm[i]?.visibility??0)>=VIS)}
 
-const LEFT={sh:11,el:13,wr:15,hip:23}, RIGHT={sh:12,el:14,wr:16,hip:24};
-let SIDE=null;                     // фиксируется на подход, чтобы не скакать
-
-function bestSide(lm){
-  const sc=o=>[o.sh,o.el,o.wr,o.hip].reduce((a,i)=>a+(lm[i]?.visibility??0),0);
-  return sc(LEFT)>=sc(RIGHT)?LEFT:RIGHT;
+/* ── скелет поверх видео с учётом object-fit: cover ── */
+function project(){
+  const vw=E.vid.videoWidth||4, vh=E.vid.videoHeight||3;
+  const cw=E.skel.width, ch=E.skel.height;
+  const s=Math.max(cw/vw,ch/vh);
+  return {s,ox:(cw-vw*s)/2,oy:(ch-vh*s)/2,vw,vh};
 }
-function sideOK(lm,o){
-  return [o.sh,o.el,o.wr,o.hip].every(i=>(lm[i]?.visibility??0)>=VIS_MIN);
-}
-
-function read(lm){
-  const o=SIDE||bestSide(lm);
-  const elbow=ang(lm[o.sh],lm[o.el],lm[o.wr]);
-  const sh=lm[o.sh], hip=lm[o.hip], wr=lm[o.wr];
-  const dx=(hip.x-sh.x)*aspect, dy=hip.y-sh.y;
-  let tilt=Math.abs(Math.atan2(dy,dx)*180/Math.PI);
-  if(tilt>90) tilt=180-tilt;                 // 0° = корпус горизонтален
-  // в упоре лёжа кисти стоят на полу — ниже таза на экране
-  const onFloor = wr.y > hip.y - 0.02;
-  return {elbow,tilt,shY:sh.y,hipY:hip.y,onFloor};
-}
-
-/* ═══ скелет поверх видео ═══ */
-function drawBones(lm,ok){
-  const w=el.bones.width,h=el.bones.height;
-  ctx.clearRect(0,0,w,h);
-  if(!lm) return;
-  const X=p=>(1-p.x)*w, Y=p=>p.y*h;          // зеркалим под превью
-  const k=w/640, lw=Math.max(3,5*k);
-
-  const groups=[
-    {c:'#2B59FF', b:[[11,13],[13,15],[12,14],[14,16]]},   // руки
-    {c:'#16191C', b:[[11,12],[11,23],[12,24],[23,24]]},   // корпус
-    {c:'#7A8288', b:[[23,25],[24,26],[25,27],[26,28]]}    // ноги
-  ];
-  ctx.lineCap='round'; ctx.lineJoin='round';
-  groups.forEach(g=>{
-    g.b.forEach(([a,b])=>{
-      const A=lm[a],B=lm[b]; if(!A||!B) return;
-      const v=Math.min(A.visibility??0,B.visibility??0);
-      if(v<0.3) return;
-      ctx.globalAlpha=Math.min(1,v+0.25);
-      ctx.strokeStyle=ok?g.c:'#E0451B';
-      ctx.lineWidth=lw;
-      ctx.beginPath();ctx.moveTo(X(A),Y(A));ctx.lineTo(X(B),Y(B));ctx.stroke();
-    });
+function draw(lm,ok){
+  const dpr=Math.min(2,devicePixelRatio||1);
+  const w=E.stage.clientWidth*dpr,h=E.stage.clientHeight*dpr;
+  if(E.skel.width!==w){E.skel.width=w;E.skel.height=h;}
+  cx.clearRect(0,0,w,h);
+  if(!lm)return;
+  const P=project();
+  const X=p=>P.ox+(1-p.x)*P.vw*P.s, Y=p=>P.oy+p.y*P.vh*P.s;
+  const col=ok?'#22DD6E':'#EF4444';
+  cx.lineCap='round';cx.lineJoin='round';cx.strokeStyle=col;
+  cx.shadowColor='rgba(0,0,0,.6)';cx.shadowBlur=6*dpr;
+  LINKS.forEach(([a,b])=>{
+    const A=lm[a],B=lm[b];if(!A||!B)return;
+    const v=Math.min(A.visibility??0,B.visibility??0);if(v<.3)return;
+    cx.globalAlpha=Math.min(1,v+.3);cx.lineWidth=5*dpr;
+    cx.beginPath();cx.moveTo(X(A),Y(A));cx.lineTo(X(B),Y(B));cx.stroke();
   });
-  ctx.globalAlpha=1;
-
-  const shown=SIDE?[SIDE.sh,SIDE.el,SIDE.wr,SIDE.hip]:KEY;
-  shown.forEach(i=>{
-    const p=lm[i]; if(!p||(p.visibility??0)<0.3) return;
-    const r=Math.max(4,7*k);
-    ctx.beginPath();ctx.arc(X(p),Y(p),r,0,7);
-    ctx.fillStyle='#fff';ctx.fill();
-    ctx.lineWidth=Math.max(2,3*k);
-    ctx.strokeStyle=ok?'#0FA958':'#E0451B';ctx.stroke();
-  });
-
-  // угол локтя цифрой рядом с суставом
-  if(ok){
-    const o=SIDE||bestSide(lm);
-    const e=lm[o.el], deg=Math.round(ang(lm[o.sh],e,lm[o.wr]));
-    const t=deg+'\u00B0', fs=Math.max(13,20*k);
-    ctx.font='600 '+fs+'px "IBM Plex Mono",monospace';
-    const tw=ctx.measureText(t).width, x=X(e)+14*k, y=Y(e)-14*k;
-    ctx.fillStyle='rgba(22,25,28,.85)';
-    ctx.fillRect(x-5*k,y-fs,tw+10*k,fs*1.35);
-    ctx.fillStyle='#EEF0EF';ctx.textBaseline='alphabetic';
-    ctx.fillText(t,x,y+fs*0.18);
-  }
+  cx.globalAlpha=1;
+  KEYS.forEach(i=>{const p=lm[i];if(!p||(p.visibility??0)<.3)return;
+    cx.beginPath();cx.arc(X(p),Y(p),6.5*dpr,0,7);
+    cx.fillStyle='#fff';cx.fill();
+    cx.lineWidth=3*dpr;cx.strokeStyle=col;cx.stroke();});
+  cx.shadowBlur=0;
 }
 
-/* ═══ колонка ═══ */
-function paint(elbow,hipOK){
-  if(!C) return;
-  const p=Math.max(0,Math.min(1,(C.up-elbow)/Math.max(1,C.up-C.bottom)));
-  el.fill.style.height=(p*100).toFixed(1)+'%';
-  el.column.classList.toggle('deep',elbow<=C.deep);
-  el.column.classList.toggle('sag',!hipOK);
+/* ── шарик глубины ── */
+function gauge(p){
+  E.ball.style.top=(Math.max(0,Math.min(1,p))*100)+'%';
 }
 
-/* ═══ автомат повторения ═══ */
-function step(m,now){
+/* ── подсказки ── */
+function hint(html,bad){
+  if(!html){E.hint.classList.remove('on');return;}
+  E.hint.innerHTML=html;E.hint.classList.toggle('bad',!!bad);E.hint.classList.add('on');
+}
+
+/* ── проверка позы: форма тела как при калибровке ── */
+function poseOK(m){
+  if(!C) return true;
+  if(Math.abs(m.shape-C.shape)>SHAPE_TOL) return 'встаньте в упор лёжа';
+  if(m.hands < C.hands-0.35) return 'обопритесь руками о пол';
+  return true;
+}
+
+/* ── автомат повторения ── */
+function engine(m,now){
+  const rng=Math.max(0.02,C.bot-C.top);
+  const down=C.top+rng*0.62, up=C.top+rng*0.25;
+  gauge((m.shY-C.top)/rng);
+
   if(S.state==='up'){
-    S.shTop=m.shY; S.hipTop=m.hipY;
-    if(m.elbow<C.down){
-      S.state='down'; S.minElbow=m.elbow;
-      S.shMin=m.shY; S.hipMin=m.hipY; S.maxTilt=Math.abs(m.tilt-C.tilt);
+    S.shTop=m.shY;S.hipTop=m.hipY;
+    if(m.shY>down){
+      S.state='down';S.shMin=m.shY;S.hipMin=m.hipY;
+      S.shapeBad=false;S.deepest=m.shY;
     }
   }else{
-    if(m.elbow<S.minElbow) S.minElbow=m.elbow;
-    if(m.shY>S.shMin) S.shMin=m.shY;
-    if(m.hipY>S.hipMin) S.hipMin=m.hipY;
-    const dt=Math.abs(m.tilt-C.tilt); if(dt>S.maxTilt) S.maxTilt=dt;
-    if(m.elbow>C.up && now-S.lastRepAt>MIN_REP_MS){
-      judge(now); S.state='up'; S.minElbow=180;
-    }
+    if(m.shY>S.shMin)S.shMin=m.shY;
+    if(m.hipY>S.hipMin)S.hipMin=m.hipY;
+    if(m.shY>S.deepest)S.deepest=m.shY;
+    if(Math.abs(m.shape-C.shape)>SHAPE_TOL)S.shapeBad=true;
+    if(m.shY<up && now-S.lastRep>MIN_REP){judge(m,now);S.state='up';}
   }
 }
 
-function judge(now){
-  S.lastRepAt=now;
+function judge(m,now){
+  S.lastRep=now;
   const dSh=S.shMin-S.shTop, dHip=S.hipMin-S.hipTop;
-  const ratio = dSh>0.01 ? dHip/dSh : 0;
+  const follow = dSh>0.005 ? dHip/dSh : 0;
+  const rng=Math.max(0.02,C.bot-C.top);
 
   let fail=null;
-  if(ratio<HIP_RATIO_MIN) fail='таз не опускался';
-  else if(S.maxTilt>TILT_MAX) fail='корпус не в линию';
+  if(S.shapeBad) fail='корпус не в линию';
+  else if(follow<HIP_FOLLOW) fail='таз не опускался';
+  else if(S.shMin-S.shTop < rng*0.55) fail='слишком мелко';
 
   if(fail){
-    S.bad++; S.combo=1;
-    el.combo.classList.remove('on');
-    el.reject.textContent='не засчитано — '+fail;
-    el.reject.classList.add('on');
-    setTimeout(()=>el.reject.classList.remove('on'),1400);
-    tone(150,260,'sawtooth');
-    return;
+    S.bad++;S.combo=1;
+    hint('не засчитано — '+fail,true);
+    setTimeout(()=>{if(phase==='counting')hint('')},1300);
+    tone(140,240,'sawtooth');return;
   }
 
   S.reps++;
-  const deep=S.minElbow<=C.deep;
-  if(deep) S.deep++;
+  const deep=(S.deepest-C.top)/rng>=0.88;
   S.combo=deep?Math.min(2,S.combo+0.2):1;
   S.score+=Math.round(10*(deep?1.5:1)*S.combo);
-
-  el.count.textContent=S.reps;
-  el.score.textContent=S.score;
-  el.count.classList.toggle('deep',deep);
-  el.count.classList.add('pop');
-  setTimeout(()=>el.count.classList.remove('pop'),100);
-  el.combo.textContent='×'+S.combo.toFixed(1);
-  el.combo.classList.toggle('on',S.combo>1.05);
-
-  tone(deep?1180:820,deep?110:75);
-  say(S.reps);
+  E.reps.textContent=S.reps;E.score.textContent=S.score;
+  tone(deep?1200:840,deep?110:75);say(S.reps);
 }
 
-/* ═══ цикл ═══ */
-function tickLoop(){
-  raf=requestAnimationFrame(tickLoop);
-  const v=el.preview;
-  if(!landmarker||v.readyState<2) return;
-  if(v.currentTime===lastVideoTs) return;
-  lastVideoTs=v.currentTime;
-
-  if(el.bones.width!==v.videoWidth){el.bones.width=v.videoWidth;el.bones.height=v.videoHeight;}
-  aspect=(v.videoWidth||4)/(v.videoHeight||3);
+/* ── цикл ── */
+function loop(){
+  raf=requestAnimationFrame(loop);
+  const v=E.vid;
+  if(!lmk||v.readyState<2||v.currentTime===lastT)return;
+  lastT=v.currentTime;
+  asp=(v.videoWidth||4)/(v.videoHeight||3);
 
   const now=performance.now();
-  const lm=landmarker.detectForVideo(v,now).landmarks?.[0];
-  if(lm&&!SIDE&&phase!=='counting') SIDE=bestSide(lm);
-  const ok=!!lm&&sideOK(lm,SIDE||bestSide(lm));
-  el.cam.classList.toggle('lost',!ok);
-  if(ok&&phase!=='idle'){const q=read(lm);el.cam.classList.toggle('good',q.tilt<=PLANK_MAX&&q.onFloor);}
-  else el.cam.classList.remove('good');
-  drawBones(lm,ok);
+  const lm=lmk.detectForVideo(v,now).landmarks?.[0];
+  const ok=!!lm&&visible(lm);
+  draw(lm,ok);
+  if(phase==='idle')return;
 
-  if(phase==='idle') return;
   if(!ok){
-    holdStart=0; el.barfill.style.width='0%';
-    if(phase!=='counting') el.calmsg.innerHTML='Не вижу вас целиком.<br><b>Отодвиньте телефон или разверните экран.</b>';
+    hold=0;E.barfill.style.width='0%';
+    hint('Не вижу вас целиком.<br><em>Отодвиньте телефон дальше.</em>',true);
     return;
   }
-  const m=read(lm);
+  const m=measure(lm);
 
   if(phase==='cal1'||phase==='cal2'){
-    if(m.tilt>PLANK_MAX||!m.onFloor){
-      holdStart=0; el.barfill.style.width='0%';
-      el.calmsg.innerHTML = m.tilt>PLANK_MAX
-        ? 'Корпус вертикальный.<br><b>Встаньте в упор лёжа, боком к камере.</b>'
-        : 'Не вижу рук на полу.<br><b>Обопритесь ладонями о пол.</b>';
-      return;
+    if(phase==='cal2'&&Math.abs(m.shape-C.shape)>SHAPE_TOL){
+      hold=0;E.barfill.style.width='0%';
+      hint('Держите ту же позу.<br><em>Опуститесь, не сгибаясь.</em>',true);return;
     }
-    if(!holdStart) holdStart=now;
-    const p=Math.min(1,(now-holdStart)/HOLD_MS);
-    el.barfill.style.width=(p*100)+'%';
-    el.calmsg.textContent = phase==='cal1'
-      ? 'Упор лёжа на прямых руках. Держите.'
-      : 'Нижняя точка. Держите.';
+    if(!hold)hold=now;
+    const p=Math.min(1,(now-hold)/HOLD);
+    E.barfill.style.width=(p*100)+'%';
+    hint(phase==='cal1'
+      ? 'Упор лёжа, руки прямые.<br><em>Держите 2 секунды.</em>'
+      : 'Опуститесь в нижнюю точку.<br><em>Держите 2 секунды.</em>');
     if(p>=1){
       if(phase==='cal1'){
-        C={up:m.elbow-6,tilt:m.tilt,bottom:90,down:120,deep:100};
-        tone(880,120); holdStart=0; phase='cal2';
-        el.calstage.textContent='Шаг 3 из 3';
+        C={top:m.shY,shape:m.shape,hands:m.hands,bot:m.shY+0.1};
+        tone(880,120);hold=0;phase='cal2';
       }else{
-        C.bottom=m.elbow;
-        const range=Math.max(20,C.up-C.bottom);
-        C.down=C.bottom+range*0.35;
-        C.deep=C.bottom+range*0.15;
-        saveCal(); loadCal();
-        tone(1180,200); holdStart=0;
-        countdown();
+        C.bot=Math.max(m.shY,C.top+0.03);
+        try{localStorage.setItem('otzhim6',JSON.stringify(C))}catch(e){}
+        showRecal();tone(1200,200);hold=0;countdown();
       }
     }
     return;
   }
 
-  if(phase!=='counting') return;
+  if(phase!=='counting')return;
 
-  el.tiltm.textContent=Math.round(m.tilt)+'\u00B0';
-  const plank=m.tilt<=PLANK_MAX && m.onFloor;
-  el.tiltm.className=plank?'':'bad';
-  if(!plank){
-    S.state='up'; el.fill.style.height='0%';
-    el.column.classList.remove('deep'); el.column.classList.add('sag');
-    el.reject.textContent = m.tilt>PLANK_MAX ? 'нужен упор лёжа' : 'руки не на полу';
-    el.reject.classList.add('on');
-    el.elbow.textContent='—'; el.hipm.textContent='—';
-    return;
+  const pose=poseOK(m);
+  if(pose!==true){
+    S.state='up';gauge(0);
+    hint(pose,true);return;
   }
-  el.reject.classList.remove('on');
+  if(!E.hint.textContent.startsWith('не засчитано')) hint('');
 
-  const hipOK = S.state==='up' || (S.shMin-S.shTop<0.01) ||
-                (S.hipMin-S.hipTop)/(S.shMin-S.shTop)>=HIP_RATIO_MIN;
-  el.elbow.textContent=Math.round(m.elbow)+'°';
-  el.elbow.className=m.elbow<=C.deep?'hot':'';
-  const r=(S.shMin-S.shTop)>0.01?(S.hipMin-S.hipTop)/(S.shMin-S.shTop):1;
-  el.hipm.textContent=S.state==='down'?Math.round(Math.min(1,Math.max(0,r))*100)+'%':'—';
-  el.hipm.className=hipOK?'':'bad';
-
-  paint(m.elbow,hipOK);
-  step(m,now);
+  const sec=Math.floor((now-t0)/1000);
+  E.clock.textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+  engine(m,now);
 }
 
-/* ═══ отсчёт ═══ */
+/* ── отсчёт ── */
 function countdown(){
-  phase='idle'; let n=3;
-  el.calmsg.textContent='Начинаем'; el.barfill.style.width='0%';
-  el.tick.textContent=n; tone(660,110);
+  phase='idle';hint('');E.bar.classList.remove('on');
+  let n=3;E.tick.classList.add('on');E.tick.textContent=n;tone(660,110);
   const iv=setInterval(()=>{
     n--;
-    if(n>0){el.tick.textContent=n;tone(660,110);}
-    else{
-      clearInterval(iv); el.tick.textContent='';
-      tone(1180,220); resetSet();
-      el.count.textContent='0';el.score.textContent='0';
-      el.combo.classList.remove('on');el.count.classList.remove('deep');
-      show('live'); phase='counting';
-    }
+    if(n>0){E.tick.textContent=n;tone(660,110);}
+    else{clearInterval(iv);E.tick.classList.remove('on');tone(1200,220);
+      resetSet();E.reps.textContent='0';E.score.textContent='0';E.clock.textContent='0:00';
+      t0=performance.now();
+      E.hud.classList.add('on');E.gauge.classList.add('on');E.bottom.classList.add('on');
+      phase='counting';}
   },1000);
 }
 
-function startFlow(skipCal){
-  SIDE=null;
-  show('cal'); holdStart=0; el.barfill.style.width='0%';
-  if(skipCal&&C){ el.calstage.textContent='Готово'; countdown(); }
-  else{ el.calstage.textContent='Шаг 2 из 3'; phase='cal1'; }
+function flow(skip){
+  E.start.classList.remove('on');E.done.classList.remove('on');
+  E.hud.classList.remove('on');E.gauge.classList.remove('on');E.bottom.classList.remove('on');
+  hold=0;E.barfill.style.width='0%';
+  if(skip&&C){countdown();}
+  else{C=null;E.bar.classList.add('on');phase='cal1';}
 }
 
-/* ═══ запуск ═══ */
 async function begin(){
-  el.starterr.textContent=''; el.go.disabled=true; el.go.textContent='Запускаю…';
+  E.err.textContent='';E.go.disabled=true;E.go.textContent='Запускаю…';
   try{
     stream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
-    el.preview.srcObject=stream; el.cam.classList.add('on'); await el.preview.play();
-
-    show('cal'); el.calstage.textContent='Шаг 1 из 3'; el.calmsg.textContent='Загружаю модель…';
-
-    if(!landmarker){
-      const vision=await FilesetResolver.forVisionTasks(
+      video:{facingMode:'user',width:{ideal:720},height:{ideal:1280}},audio:false});
+    E.vid.srcObject=stream;await E.vid.play();
+    E.start.classList.remove('on');
+    hint('Загружаю модель…');
+    if(!lmk){
+      const fs=await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
-      const opts=d=>({baseOptions:{modelAssetPath:
+      const o=d=>({baseOptions:{modelAssetPath:
         "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
         delegate:d},runningMode:"VIDEO",numPoses:1});
-      try{ landmarker=await PoseLandmarker.createFromOptions(vision,opts("GPU")); }
-      catch(e){ landmarker=await PoseLandmarker.createFromOptions(vision,opts("CPU")); }
+      try{lmk=await PoseLandmarker.createFromOptions(fs,o("GPU"));}
+      catch(e){lmk=await PoseLandmarker.createFromOptions(fs,o("CPU"));}
     }
-    try{ wakeLock=await navigator.wakeLock.request('screen'); }catch(e){}
+    try{lock=await navigator.wakeLock.request('screen')}catch(e){}
     tone(440,60);
-    if(!raf) tickLoop();
-    startFlow(!!C);
+    if(!raf)loop();
+    flow(!!C);
   }catch(e){
-    show('start');
-    el.starterr.textContent = e.name==='NotAllowedError'
-      ? 'Доступ к камере запрещён. Разрешите камеру в адресной строке и нажмите ещё раз.'
+    E.start.classList.add('on');
+    E.err.textContent = e.name==='NotAllowedError'
+      ? 'Камера запрещена. Разрешите доступ в адресной строке и нажмите ещё раз.'
       : 'Не удалось запустить: '+e.message;
-  }finally{ el.go.disabled=false; el.go.textContent='Включить камеру'; }
+  }finally{E.go.disabled=false;E.go.textContent='Начать';}
 }
 
 function finish(){
-  phase='idle';
-  el.dReps.textContent=S.reps||0; el.dScore.textContent=S.score||0;
-  el.dDeep.textContent=S.deep||0; el.dBad.textContent=S.bad||0;
-  el.fill.style.height='0%'; show('done');
+  phase='idle';hint('');
+  E.hud.classList.remove('on');E.gauge.classList.remove('on');E.bottom.classList.remove('on');
+  E.dR.textContent=S.reps;E.dS.textContent=S.score;E.dB.textContent=S.bad;
+  E.dT.textContent=E.clock.textContent;
+  E.done.classList.add('on');
 }
-function shutdown(){
-  phase='idle';
+function stopAll(){
+  phase='idle';hint('');
   if(raf){cancelAnimationFrame(raf);raf=null;}
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
-  if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null;}
-  el.cam.classList.remove('on'); el.fill.style.height='0%'; show('start');
+  if(lock){lock.release().catch(()=>{});lock=null;}
+  E.hud.classList.remove('on');E.gauge.classList.remove('on');
+  E.bottom.classList.remove('on');E.bar.classList.remove('on');
+  E.done.classList.remove('on');E.start.classList.add('on');
 }
 
-el.go.onclick=begin;
-el.cancel.onclick=shutdown;
-el.stop.onclick=finish;
-el.home.onclick=shutdown;
-el.again.onclick=()=>startFlow(true);
-el.redo.onclick=()=>{C=null;loadCal();startFlow(false);};
-el.recal.onclick=()=>{C=null;try{localStorage.removeItem('otzhim.cal')}catch(e){}loadCal();};
-el.cam.onclick=()=>{
-  const o=['s','m','l'],i=o.findIndex(c=>el.cam.classList.contains(c));
-  el.cam.classList.remove(...o); el.cam.classList.add(o[(i+1)%3]);
-};
+E.go.onclick=begin;
+E.stopb.onclick=finish;
+E.home.onclick=stopAll;
+E.again.onclick=()=>flow(true);
+E.redo.onclick=()=>flow(false);
+E.recal.onclick=()=>{C=null;try{localStorage.removeItem('otzhim6')}catch(e){}showRecal();};
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&phase==='counting')finish();});
-resetSet();
 </script>
 </body>
 </html>

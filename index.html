@@ -20,7 +20,7 @@ body{font-family:Inter,system-ui,sans-serif;color:var(--paper)}
 
 /* ── камера во весь экран ── */
 #stage{position:fixed;inset:0;background:#000}
-#vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#vid{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scaleX(-1)}
 #skel{position:absolute;inset:0;width:100%;height:100%}
 #vignette{position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(180deg,rgba(0,0,0,.72) 0%,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 68%,rgba(0,0,0,.78) 100%)}
@@ -140,7 +140,7 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
   </div>
   <div class="row"><button class="ghost" id="recal" style="display:none">Сбросить калибровку</button></div>
   <p id="err" class="err"></p>
-  <p class="ver">версия 6 · камера во весь экран</p>
+  <p class="ver">версия 8 · кадр целиком, без обрезки</p>
 </section>
 
 <section id="done" class="sheet">
@@ -161,7 +161,7 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
 <script type="module">
 import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
-const VIS=0.5, HOLD=2000, MIN_REP=420;
+const VIS=0.35, HOLD=2000, MIN_REP=420, GRACE=600;
 const HIP_FOLLOW=0.35;    // таз проходит долю пути плеч
 const SHAPE_TOL=0.45;     // допуск на пропорцию «корпус / рука»
 const KEYS=[11,12,13,14,15,16,23,24,25,26];
@@ -174,7 +174,7 @@ const $=i=>document.getElementById(i), E={};
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
-let phase='idle', lastT=-1, hold=0, t0=0, C=null, S={};
+let phase='idle', lastT=-1, hold=0, t0=0, C=null, S={}, lastGood=0;
 
 /* ── калибровка ── */
 try{const r=localStorage.getItem('otzhim6');if(r)C=JSON.parse(r);}catch(e){}
@@ -209,26 +209,31 @@ const D=(a,b)=>Math.hypot((a.x-b.x)*asp,a.y-b.y);
 function pt(lm,i,j){return {x:(lm[i].x+lm[j].x)/2,y:(lm[i].y+lm[j].y)/2};}
 
 function measure(lm){
-  const sh=pt(lm,11,12), hip=pt(lm,23,24), wr=pt(lm,15,16), kn=pt(lm,25,26);
+  const sh=pt(lm,11,12), hip=pt(lm,23,24), wr=pt(lm,15,16);
   // длина руки как эталон масштаба — видна при любом ракурсе
-  const armL=D(lm[11],lm[13])+D(lm[13],lm[15]);
-  const armR=D(lm[12],lm[14])+D(lm[14],lm[16]);
+  const v=i=>(lm[i]?.visibility??0);
+  const armL=v(13)>=VIS&&v(15)>=VIS ? D(lm[11],lm[13])+D(lm[13],lm[15]) : 0;
+  const armR=v(14)>=VIS&&v(16)>=VIS ? D(lm[12],lm[14])+D(lm[14],lm[16]) : 0;
   const arm=Math.max(armL,armR)||0.2;
   return {
     shY:sh.y, hipY:hip.y,
     shape:D(sh,hip)/arm,            // пропорция корпус/рука: меняется, если встать
     hands:(wr.y-sh.y)/arm,          // кисти ниже плеч — опора на пол
-    legs:(kn.y-hip.y)/arm,
     arm
   };
 }
-function visible(lm){return KEYS.every(i=>(lm[i]?.visibility??0)>=VIS)}
+function visible(lm){
+  const v=i=>(lm[i]?.visibility??0);
+  const core = v(11)>=VIS&&v(12)>=VIS&&v(23)>=VIS&&v(24)>=VIS;
+  const armL = v(13)>=VIS&&v(15)>=VIS, armR = v(14)>=VIS&&v(16)>=VIS;
+  return core&&(armL||armR);
+}
 
 /* ── скелет поверх видео с учётом object-fit: cover ── */
 function project(){
   const vw=E.vid.videoWidth||4, vh=E.vid.videoHeight||3;
   const cw=E.skel.width, ch=E.skel.height;
-  const s=Math.max(cw/vw,ch/vh);
+  const s=Math.min(cw/vw,ch/vh);   // contain: кадр целиком
   return {s,ox:(cw-vw*s)/2,oy:(ch-vh*s)/2,vw,vh};
 }
 function draw(lm,ok){
@@ -278,7 +283,7 @@ function poseOK(m){
 /* ── автомат повторения ── */
 function engine(m,now){
   const rng=Math.max(0.02,C.bot-C.top);
-  const down=C.top+rng*0.62, up=C.top+rng*0.25;
+  const down=C.top+rng*0.55, up=C.top+rng*0.22;
   gauge((m.shY-C.top)/rng);
 
   if(S.state==='up'){
@@ -305,7 +310,7 @@ function judge(m,now){
   let fail=null;
   if(S.shapeBad) fail='корпус не в линию';
   else if(follow<HIP_FOLLOW) fail='таз не опускался';
-  else if(S.shMin-S.shTop < rng*0.55) fail='слишком мелко';
+  else if(S.shMin-S.shTop < rng*0.45) fail='слишком мелко';
 
   if(fail){
     S.bad++;S.combo=1;
@@ -315,7 +320,7 @@ function judge(m,now){
   }
 
   S.reps++;
-  const deep=(S.deepest-C.top)/rng>=0.88;
+  const deep=(S.deepest-C.top)/rng>=0.85;
   S.combo=deep?Math.min(2,S.combo+0.2):1;
   S.score+=Math.round(10*(deep?1.5:1)*S.combo);
   E.reps.textContent=S.reps;E.score.textContent=S.score;
@@ -336,11 +341,14 @@ function loop(){
   draw(lm,ok);
   if(phase==='idle')return;
 
-  if(!ok){
+  if(ok) lastGood=now;
+  const fresh = now-lastGood < GRACE;      // короткое моргание переживаем
+  if(!ok && !fresh){
     hold=0;E.barfill.style.width='0%';
-    hint('Не вижу вас целиком.<br><em>Отодвиньте телефон дальше.</em>',true);
+    hint('Не вижу плечи и таз.<br><em>Подвиньтесь, чтобы корпус был в кадре.</em>',true);
     return;
   }
+  if(!ok && phase!=='counting') return;    // в калибровке ждём чистый кадр
   const m=measure(lm);
 
   if(phase==='cal1'||phase==='cal2'){
@@ -408,8 +416,14 @@ async function begin(){
   E.err.textContent='';E.go.disabled=true;E.go.textContent='Запускаю…';
   try{
     stream=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:'user',width:{ideal:720},height:{ideal:1280}},audio:false});
+      video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});
     E.vid.srcObject=stream;await E.vid.play();
+    // если телефон умеет управлять зумом — ставим самый широкий угол
+    try{
+      const tr=stream.getVideoTracks()[0], cap=tr.getCapabilities?.();
+      if(cap&&cap.zoom&&cap.zoom.min!=null)
+        await tr.applyConstraints({advanced:[{zoom:cap.zoom.min}]});
+    }catch(e){}
     E.start.classList.remove('on');
     hint('Загружаю модель…');
     if(!lmk){

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#EEF0EF">
+<meta http-equiv="Cache-Control" content="no-store">
 <title>ОТЖИМ — счётчик по камере</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -51,6 +52,7 @@ button:focus-visible{outline:3px solid var(--charge);outline-offset:3px}
 .ghost{background:none;color:var(--slate);border:1px solid var(--hair);
   font-size:clamp(10px,1.9vmin,12px);padding:1.4vmin 2.6vmin}
 .row{display:flex;gap:1.4vmin;flex-wrap:wrap;align-items:center}
+.ver{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--lock)}
 .err{color:var(--sag);font-family:'IBM Plex Mono',monospace;font-size:13px;max-width:44ch;line-height:1.5}
 .toggle{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;
   text-transform:uppercase;color:var(--slate);display:flex;align-items:center;gap:1ch;cursor:pointer}
@@ -133,6 +135,7 @@ button:focus-visible{outline:3px solid var(--charge);outline-offset:3px}
     <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
   </div>
   <p id="starterr" class="err"></p>
+  <p class="ver">версия 3 · проверка упора лёжа включена</p>
 </section>
 
 <section id="cal" class="screen">
@@ -250,11 +253,13 @@ function read(lm){
   const L=[11,13,15],R=[12,14,16];
   const arm=sc(L)>=sc(R)?L:R;
   const elbow=ang(lm[arm[0]],lm[arm[1]],lm[arm[2]]);
-  const sh=mid(lm,11,12), hip=mid(lm,23,24);
+  const sh=mid(lm,11,12), hip=mid(lm,23,24), wr=mid(lm,15,16);
   const dx=(hip.x-sh.x)*aspect, dy=hip.y-sh.y;
   let tilt=Math.abs(Math.atan2(dy,dx)*180/Math.PI);
   if(tilt>90) tilt=180-tilt;                 // 0° = корпус горизонтален
-  return {elbow,tilt,shY:sh.y,hipY:hip.y};
+  // в упоре лёжа кисти стоят на полу — ниже таза на экране
+  const onFloor = wr.y > hip.y - 0.02;
+  return {elbow,tilt,shY:sh.y,hipY:hip.y,onFloor};
 }
 
 /* ═══ скелет поверх видео ═══ */
@@ -388,7 +393,8 @@ function tickLoop(){
   const lm=landmarker.detectForVideo(v,now).landmarks?.[0];
   const ok=!!lm&&KEY.every(i=>(lm[i]?.visibility??0)>=VIS_MIN);
   el.cam.classList.toggle('lost',!ok);
-  el.cam.classList.toggle('good',ok&&phase!=='idle'&&read(lm).tilt<=PLANK_MAX);
+  if(ok&&phase!=='idle'){const q=read(lm);el.cam.classList.toggle('good',q.tilt<=PLANK_MAX&&q.onFloor);}
+  else el.cam.classList.remove('good');
   drawBones(lm,ok);
 
   if(phase==='idle') return;
@@ -400,9 +406,11 @@ function tickLoop(){
   const m=read(lm);
 
   if(phase==='cal1'||phase==='cal2'){
-    if(m.tilt>PLANK_MAX){
+    if(m.tilt>PLANK_MAX||!m.onFloor){
       holdStart=0; el.barfill.style.width='0%';
-      el.calmsg.innerHTML='Корпус вертикальный.<br><b>Встаньте в упор лёжа, боком к камере.</b>';
+      el.calmsg.innerHTML = m.tilt>PLANK_MAX
+        ? 'Корпус вертикальный.<br><b>Встаньте в упор лёжа, боком к камере.</b>'
+        : 'Не вижу рук на полу.<br><b>Обопритесь ладонями о пол.</b>';
       return;
     }
     if(!holdStart) holdStart=now;
@@ -432,12 +440,12 @@ function tickLoop(){
   if(phase!=='counting') return;
 
   el.tiltm.textContent=Math.round(m.tilt)+'\u00B0';
-  const plank=m.tilt<=PLANK_MAX;
+  const plank=m.tilt<=PLANK_MAX && m.onFloor;
   el.tiltm.className=plank?'':'bad';
   if(!plank){
     S.state='up'; el.fill.style.height='0%';
     el.column.classList.remove('deep'); el.column.classList.add('sag');
-    el.reject.textContent='нужен упор лёжа';
+    el.reject.textContent = m.tilt>PLANK_MAX ? 'нужен упор лёжа' : 'руки не на полу';
     el.reject.classList.add('on');
     el.elbow.textContent='—'; el.hipm.textContent='—';
     return;

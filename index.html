@@ -10,133 +10,106 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --chalk:#EEF0EF;
-  --iron:#16191C;
-  --slate:#7A8288;
-  --hair:#D2D6D7;
-  --charge:#2B59FF;
-  --lock:#0FA958;
-  --sag:#E0451B;
+  --chalk:#EEF0EF; --iron:#16191C; --slate:#7A8288; --hair:#D2D6D7;
+  --charge:#2B59FF; --lock:#0FA958; --sag:#E0451B;
   --col:6.5vmin;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
 body{
-  background:var(--chalk);color:var(--iron);
-  font-family:Inter,system-ui,sans-serif;
+  background:var(--chalk);color:var(--iron);font-family:Inter,system-ui,sans-serif;
   padding-left:var(--col);
-  padding-top:env(safe-area-inset-top);
-  padding-bottom:env(safe-area-inset-bottom);
+  padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);
 }
 
-/* ── сигнатурный элемент: колонка глубины во всю высоту слева ── */
-#column{
-  position:fixed;left:0;top:0;bottom:0;width:var(--col);
-  background:#E1E4E5;border-right:1px solid var(--hair);
-  z-index:40;overflow:hidden;
-}
-#fill{
-  position:absolute;left:0;right:0;bottom:0;height:0;
-  background:var(--charge);transition:background .08s linear;
-}
-#markline{
-  position:absolute;left:0;right:0;bottom:70%;height:2px;
-  background:var(--iron);opacity:.35;
-}
+#column{position:fixed;left:0;top:0;bottom:0;width:var(--col);
+  background:#E1E4E5;border-right:1px solid var(--hair);z-index:40;overflow:hidden}
+#fill{position:absolute;left:0;right:0;bottom:0;height:0;background:var(--charge)}
+#markline{position:absolute;left:0;right:0;bottom:70%;height:2px;background:var(--iron);opacity:.35}
 #column.deep #fill{background:var(--lock)}
 #column.sag #fill{background:var(--sag)}
 
-/* ── экраны ── */
 .screen{position:fixed;inset:0;left:var(--col);display:none;flex-direction:column;z-index:10}
 .screen.on{display:flex}
 
-/* старт */
-#start{justify-content:center;padding:5vmin 6vmin;gap:3.2vmin;overflow-y:auto}
-h1{font-family:'Archivo Black',sans-serif;font-size:clamp(30px,9vmin,64px);line-height:.92;letter-spacing:-.02em}
+#start{justify-content:center;padding:5vmin 6vmin;gap:3vmin;overflow-y:auto}
+h1{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,8.5vmin,60px);line-height:.92;letter-spacing:-.02em}
 h1 em{font-style:normal;color:var(--charge)}
-.lede{font-size:clamp(14px,2.6vmin,18px);color:var(--slate);max-width:44ch;line-height:1.5}
-.setup{list-style:none;display:flex;flex-direction:column;gap:1.4vmin;max-width:46ch}
-.setup li{
-  font-family:'IBM Plex Mono',monospace;font-size:clamp(12px,2.2vmin,15px);
-  padding-left:3.6ch;position:relative;line-height:1.45;
-}
-.setup li::before{
-  content:attr(data-n);position:absolute;left:0;top:0;
-  color:var(--charge);font-weight:600;
-}
-button{
-  font-family:'IBM Plex Mono',monospace;font-weight:600;
-  letter-spacing:.09em;text-transform:uppercase;cursor:pointer;
-  border:none;border-radius:0;
-}
-#go{
-  background:var(--iron);color:var(--chalk);
-  font-size:clamp(14px,2.6vmin,17px);padding:2.2vmin 4vmin;align-self:flex-start;
-}
+.lede{font-size:clamp(13px,2.5vmin,17px);color:var(--slate);max-width:44ch;line-height:1.5}
+.setup{list-style:none;display:flex;flex-direction:column;gap:1.2vmin;max-width:46ch}
+.setup li{font-family:'IBM Plex Mono',monospace;font-size:clamp(11px,2.1vmin,14px);
+  padding-left:3.6ch;position:relative;line-height:1.45}
+.setup li::before{content:attr(data-n);position:absolute;left:0;top:0;color:var(--charge);font-weight:600}
+
+button{font-family:'IBM Plex Mono',monospace;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;cursor:pointer;border:none;border-radius:0}
+#go{background:var(--iron);color:var(--chalk);font-size:clamp(13px,2.5vmin,16px);
+  padding:2.2vmin 4vmin;align-self:flex-start}
 #go:active{background:var(--charge)}
 #go:disabled{background:var(--slate);cursor:wait}
-#go:focus-visible,.ghost:focus-visible{outline:3px solid var(--charge);outline-offset:3px}
-.ghost{
-  background:none;color:var(--slate);border:1px solid var(--hair);
-  font-size:clamp(11px,2vmin,13px);padding:1.4vmin 2.6vmin;
-}
+button:focus-visible{outline:3px solid var(--charge);outline-offset:3px}
+.ghost{background:none;color:var(--slate);border:1px solid var(--hair);
+  font-size:clamp(10px,1.9vmin,12px);padding:1.4vmin 2.6vmin}
+.row{display:flex;gap:1.4vmin;flex-wrap:wrap;align-items:center}
 .err{color:var(--sag);font-family:'IBM Plex Mono',monospace;font-size:13px;max-width:44ch;line-height:1.5}
+.toggle{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--slate);display:flex;align-items:center;gap:1ch;cursor:pointer}
+.toggle input{accent-color:var(--charge);width:16px;height:16px}
 
-/* наводка */
-#frame{align-items:center;justify-content:center;gap:3vmin;padding:5vmin}
-#framemsg{
-  font-family:'IBM Plex Mono',monospace;font-size:clamp(13px,2.8vmin,19px);
-  text-align:center;line-height:1.5;max-width:34ch;
-}
-#framemsg b{color:var(--sag);font-weight:600}
-#tick{font-family:'Archivo Black',sans-serif;font-size:26vmin;line-height:1;color:var(--charge)}
+/* калибровка и наводка */
+#cal{align-items:center;justify-content:center;gap:2.4vmin;padding:5vmin;text-align:center}
+#calstage{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--charge)}
+#calmsg{font-family:'IBM Plex Mono',monospace;font-size:clamp(13px,2.9vmin,20px);
+  line-height:1.5;max-width:32ch}
+#calmsg b{color:var(--sag);font-weight:600}
+#bar{width:min(60vw,340px);height:6px;background:var(--hair)}
+#barfill{height:100%;width:0;background:var(--charge)}
+#tick{font-family:'Archivo Black',sans-serif;font-size:22vmin;line-height:1;color:var(--charge)}
 
 /* тренировка */
-#live{padding:2.4vmin 3vmin}
-.strip{
-  display:flex;justify-content:space-between;align-items:flex-start;gap:2vmin;
-  font-family:'IBM Plex Mono',monospace;font-size:clamp(10px,1.9vmin,13px);
-  letter-spacing:.11em;text-transform:uppercase;color:var(--slate);
-}
-.cell b{display:block;font-size:clamp(15px,3.4vmin,24px);color:var(--iron);letter-spacing:0;margin-top:.4vmin}
-.cell b.hot{color:var(--charge)}
-.cell b.bad{color:var(--sag)}
-#count{
-  flex:1;display:flex;align-items:center;justify-content:center;
-  font-family:'Archivo Black',sans-serif;font-size:44vmin;line-height:.8;
-  letter-spacing:-.045em;font-variant-numeric:tabular-nums;
-  transition:transform .1s ease-out,color .1s;
-}
-#count.pop{transform:scale(1.07)}
+#live{padding:2.2vmin 3vmin}
+.strip{display:flex;justify-content:space-between;align-items:flex-start;gap:2vmin;
+  font-family:'IBM Plex Mono',monospace;font-size:clamp(9px,1.8vmin,12px);
+  letter-spacing:.11em;text-transform:uppercase;color:var(--slate)}
+.cell b{display:block;font-size:clamp(14px,3.2vmin,22px);color:var(--iron);letter-spacing:0;margin-top:.4vmin}
+.cell b.hot{color:var(--charge)} .cell b.bad{color:var(--sag)}
+#count{flex:1;display:flex;align-items:center;justify-content:center;
+  font-family:'Archivo Black',sans-serif;font-size:38vmin;line-height:.8;
+  letter-spacing:-.045em;font-variant-numeric:tabular-nums;transition:transform .08s ease-out}
+#count.pop{transform:scale(1.06)}
 #count.deep{color:var(--lock)}
+#reject{position:absolute;left:0;right:0;top:38%;text-align:center;pointer-events:none;
+  font-family:'IBM Plex Mono',monospace;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;font-size:clamp(13px,3vmin,20px);color:var(--sag);opacity:0;
+  transition:opacity .15s}
+#reject.on{opacity:1}
 .footrow{display:flex;justify-content:space-between;align-items:flex-end;gap:2vmin}
-#combo{
-  font-family:'Archivo Black',sans-serif;font-size:clamp(18px,5vmin,38px);
-  color:var(--charge);opacity:0;transition:opacity .2s;letter-spacing:-.02em;
-}
+#combo{font-family:'Archivo Black',sans-serif;font-size:clamp(16px,4.6vmin,34px);
+  color:var(--charge);opacity:0;transition:opacity .2s;letter-spacing:-.02em}
 #combo.on{opacity:1}
 
-/* итог */
-#done{justify-content:center;padding:5vmin 6vmin;gap:2.4vmin}
-#done h2{font-family:'Archivo Black',sans-serif;font-size:clamp(26px,7vmin,50px);letter-spacing:-.02em;line-height:1}
-.stats{display:flex;flex-wrap:wrap;gap:5vmin 7vmin;margin:1vmin 0 2vmin}
-.stat{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--slate)}
-.stat b{display:block;font-family:'Archivo Black',sans-serif;font-size:clamp(26px,7vmin,48px);color:var(--iron);letter-spacing:-.02em;margin-top:.6vmin}
-.btnrow{display:flex;gap:1.6vmin;flex-wrap:wrap}
+#done{justify-content:center;padding:5vmin 6vmin;gap:2.2vmin;overflow-y:auto}
+#done h2{font-family:'Archivo Black',sans-serif;font-size:clamp(24px,6.5vmin,46px);letter-spacing:-.02em;line-height:1}
+.stats{display:flex;flex-wrap:wrap;gap:4vmin 6vmin;margin:1vmin 0 2vmin}
+.stat{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--slate)}
+.stat b{display:block;font-family:'Archivo Black',sans-serif;font-size:clamp(22px,6vmin,42px);
+  color:var(--iron);letter-spacing:-.02em;margin-top:.5vmin}
+.stat.warn b{color:var(--sag)}
 
-/* превью камеры — маленькое, это индикатор кадра, а не герой */
-#preview{
-  position:fixed;right:2.4vmin;bottom:2.4vmin;
-  width:22vmin;max-width:150px;aspect-ratio:4/3;
-  border:1px solid var(--hair);background:#000;z-index:30;display:none;
-  transform:scaleX(-1);object-fit:cover;
-}
-#preview.on{display:block}
-#preview.lost{border-color:var(--sag);border-width:2px}
+/* превью — теперь крупное, со скелетом, тап меняет размер */
+#cam{position:fixed;right:2vmin;bottom:2vmin;z-index:30;display:none;
+  border:1px solid var(--hair);background:#000;line-height:0;cursor:pointer}
+#cam.on{display:block}
+#cam.s{width:24vmin;max-width:170px}
+#cam.m{width:40vmin;max-width:300px}
+#cam.l{width:58vmin;max-width:460px}
+#cam.lost{border-color:var(--sag);border-width:2px}
+#cam video,#cam canvas{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
+#cam video{transform:scaleX(-1)}
+#cam canvas{position:absolute;inset:0;height:100%}
 
-@media (prefers-reduced-motion:reduce){
-  #count,#combo,#fill{transition:none}
-}
+@media (prefers-reduced-motion:reduce){#count,#combo,#reject{transition:none}}
 </style>
 </head>
 <body>
@@ -145,18 +118,26 @@ button{
 
 <section id="start" class="screen on">
   <h1>СЧИТАЙ<br><em>ОТЖИМАНИЯ</em><br>КАМЕРОЙ</h1>
-  <p class="lede">Телефон смотрит на вас сбоку и засчитывает повторение, только если локоть согнулся до 95° и таз не провис. Полосу слева видно боковым зрением — не нужно поднимать голову.</p>
+  <p class="lede">Повторение засчитывается, только если таз опускается вместе с плечами. Лечь животом на пол и подниматься корпусом не получится — такие попытки отклоняются.</p>
   <ul class="setup">
-    <li data-n="01">Положите телефон на бок в 1,5–2 м сбоку, экраном к себе</li>
-    <li data-n="02">Экран на уровне пола или чуть выше — вы должны попасть в кадр целиком</li>
-    <li data-n="03">Отжимайтесь боком к телефону, чтобы было видно локоть и таз</li>
+    <li data-n="01">Телефон на бок в 1,5–2 м сбоку, экраном к себе</li>
+    <li data-n="02">Отжимайтесь боком к камере: видно локоть, таз и колено</li>
+    <li data-n="03">Перед первым подходом — калибровка, две позы по 2 секунды</li>
   </ul>
-  <button id="go">Включить камеру</button>
+  <div class="row">
+    <button id="go">Включить камеру</button>
+    <label class="toggle"><input type="checkbox" id="voice"> Голосом</label>
+  </div>
+  <div class="row">
+    <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
+  </div>
   <p id="starterr" class="err"></p>
 </section>
 
-<section id="frame" class="screen">
-  <p id="framemsg">Загружаю модель…</p>
+<section id="cal" class="screen">
+  <div id="calstage">Шаг 1 из 3</div>
+  <p id="calmsg">Загружаю модель…</p>
+  <div id="bar"><div id="barfill"></div></div>
   <div id="tick"></div>
   <button class="ghost" id="cancel">Отмена</button>
 </section>
@@ -164,10 +145,11 @@ button{
 <section id="live" class="screen">
   <div class="strip">
     <div class="cell">Локоть<b id="elbow">—</b></div>
-    <div class="cell">Корпус<b id="body">—</b></div>
+    <div class="cell">Таз<b id="hipm">—</b></div>
     <div class="cell">Очки<b id="score">0</b></div>
   </div>
   <div id="count">0</div>
+  <div id="reject"></div>
   <div class="footrow">
     <div id="combo">×1.0</div>
     <button class="ghost" id="stop">Закончить</button>
@@ -180,295 +162,325 @@ button{
     <div class="stat">Повторений<b id="dReps">0</b></div>
     <div class="stat">Очки<b id="dScore">0</b></div>
     <div class="stat">Глубоких<b id="dDeep">0</b></div>
-    <div class="stat">Чистых<b id="dClean">0</b></div>
+    <div class="stat warn">Отклонено<b id="dBad">0</b></div>
   </div>
-  <div class="btnrow">
+  <div class="row">
     <button id="again">Ещё подход</button>
+    <button class="ghost" id="redo">Перекалибровать</button>
     <button class="ghost" id="home">В начало</button>
   </div>
 </section>
 
-<video id="preview" playsinline muted autoplay></video>
+<div id="cam" class="m">
+  <video id="preview" playsinline muted autoplay></video>
+  <canvas id="bones"></canvas>
+</div>
 
 <script type="module">
 import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
-/* ═══ настройки механики ═══ */
-const DOWN_ANGLE   = 95;   // локоть согнут — засчитываем низ
-const UP_ANGLE     = 155;  // локоть выпрямлен — повторение закрыто
-const DEEP_ANGLE   = 80;   // глубокое повторение, множитель ×1.5
-const BODY_MIN     = 155;  // ниже — таз провис или поднят домиком
-const VIS_MIN      = 0.6;  // порог уверенности трекера по точке
-const MIN_REP_MS   = 500;  // защита от дребезга
-const DETECT_FPS   = 15;   // экономим батарею
+/* ═══ константы ═══ */
+const VIS_MIN=0.55, MIN_REP_MS=450, HOLD_MS=2000;
+const HIP_RATIO_MIN=0.40;   // таз должен пройти ≥40% пути плеч
+const TILT_MAX=20;          // отклонение корпуса от калиброванной планки
+const KEY=[11,12,13,14,15,16,23,24];
+const BONES=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23,25],[24,26]];
 
-const KEY = [11,12,13,14,15,16,23,24];   // плечи, локти, запястья, таз
-const $ = id => document.getElementById(id);
-const el = {
-  go:$('go'), starterr:$('starterr'), cancel:$('cancel'), stop:$('stop'),
-  again:$('again'), home:$('home'), framemsg:$('framemsg'), tick:$('tick'),
-  count:$('count'), elbow:$('elbow'), body:$('body'), score:$('score'),
-  combo:$('combo'), fill:$('fill'), column:$('column'), preview:$('preview'),
-  dReps:$('dReps'), dScore:$('dScore'), dDeep:$('dDeep'), dClean:$('dClean')
-};
+const $=id=>document.getElementById(id);
+const el={};
+['go','starterr','voice','recal','cancel','stop','again','redo','home','calstage','calmsg',
+ 'barfill','tick','count','elbow','hipm','score','combo','reject','fill','column','cam',
+ 'preview','bones','dReps','dScore','dDeep','dBad'].forEach(k=>el[k]=$(k));
+const ctx=el.bones.getContext('2d');
 
-let landmarker=null, stream=null, raf=null, wakeLock=null;
-let phase='idle';            // idle | framing | counting
-let lastDetect=0, lastVideoTs=-1;
-let seenSince=0;             // с какого момента человек стабильно в кадре
-
-/* состояние подхода */
+let landmarker=null,stream=null,raf=null,wakeLock=null;
+let phase='idle';           // idle | cal1 | cal2 | counting
+let lastVideoTs=-1, holdStart=0, aspect=1;
+let C=null;                 // калибровка
 let S={};
-function resetSet(){
-  S={ reps:0, score:0, deep:0, clean:0, combo:1,
-      state:'up', minElbow:180, minBody:180, lastRepAt:0 };
-}
 
-/* ═══ экраны ═══ */
-function show(name){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id===name));
+/* ═══ калибровка: загрузка/сохранение ═══ */
+function loadCal(){
+  try{ const r=localStorage.getItem('otzhim.cal'); if(r) C=JSON.parse(r); }catch(e){}
+  el.recal.style.display = C ? '' : 'none';
 }
+function saveCal(){ try{ localStorage.setItem('otzhim.cal',JSON.stringify(C)); }catch(e){} }
+loadCal();
+
+function resetSet(){
+  S={reps:0,score:0,deep:0,bad:0,combo:1,state:'up',
+     minElbow:180,shTop:0,hipTop:0,shMin:0,hipMin:0,maxTilt:0,lastRepAt:0};
+}
+function show(n){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===n));}
 
 /* ═══ звук ═══ */
 let ac=null;
-function beep(freq, ms=90){
+function tone(f,ms=90,type='square'){
   try{
-    ac = ac || new (window.AudioContext||window.webkitAudioContext)();
-    const o=ac.createOscillator(), g=ac.createGain();
-    o.frequency.value=freq; o.type='square';
-    g.gain.setValueAtTime(.14, ac.currentTime);
-    g.gain.exponentialRampToValueAtTime(.001, ac.currentTime+ms/1000);
-    o.connect(g); g.connect(ac.destination);
-    o.start(); o.stop(ac.currentTime+ms/1000);
+    ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.type=type;o.frequency.value=f;
+    g.gain.setValueAtTime(.15,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+ms/1000);
+    o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+ms/1000);
   }catch(e){}
 }
 function say(n){
-  try{
-    speechSynthesis.cancel();
+  if(!el.voice.checked) return;
+  try{ speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(String(n));
-    u.lang='ru-RU'; u.rate=1.25; u.volume=.9;
-    speechSynthesis.speak(u);
+    u.lang='ru-RU';u.rate=1.4;u.volume=.9;speechSynthesis.speak(u);
   }catch(e){}
 }
 
 /* ═══ геометрия ═══ */
-let aspect=1;
-function angle(a,b,c){
-  const ax=(a.x-b.x)*aspect, ay=a.y-b.y;
-  const cx=(c.x-b.x)*aspect, cy=c.y-b.y;
-  const dot=ax*cx+ay*cy;
+function ang(a,b,c){
+  const ax=(a.x-b.x)*aspect,ay=a.y-b.y,cx=(c.x-b.x)*aspect,cy=c.y-b.y;
   const m=Math.hypot(ax,ay)*Math.hypot(cx,cy);
   if(!m) return 180;
-  return Math.acos(Math.max(-1,Math.min(1,dot/m)))*180/Math.PI;
+  return Math.acos(Math.max(-1,Math.min(1,(ax*cx+ay*cy)/m)))*180/Math.PI;
 }
-function vis(lm,i){ return (lm[i]?.visibility ?? 0) >= VIS_MIN; }
+function mid(lm,i,j){return {x:(lm[i].x+lm[j].x)/2,y:(lm[i].y+lm[j].y)/2};}
 
-/* сторона, которую трекер видит увереннее */
-function readAngles(lm){
-  const score = s => (lm[s[0]].visibility+lm[s[1]].visibility+lm[s[2]].visibility);
-  const L=[11,13,15], R=[12,14,16];
-  const arm = score(L)>=score(R) ? L : R;
-  const hip = arm[0]===11 ? [11,23,25] : [12,24,26];
-  const elbowA = angle(lm[arm[0]], lm[arm[1]], lm[arm[2]]);
-  let bodyA = 180;
-  if(lm[hip[2]] && lm[hip[2]].visibility>=0.4)
-    bodyA = angle(lm[hip[0]], lm[hip[1]], lm[hip[2]]);
-  return {elbowA, bodyA};
-}
-
-/* ═══ колонка глубины ═══ */
-function paintColumn(elbowA, bodyOK){
-  const p = Math.max(0, Math.min(1, (UP_ANGLE-elbowA)/(UP_ANGLE-DEEP_ANGLE)));
-  el.fill.style.height = (p*100).toFixed(1)+'%';
-  el.column.classList.toggle('deep', elbowA<=DEEP_ANGLE);
-  el.column.classList.toggle('sag', !bodyOK);
+function read(lm){
+  const sc=s=>lm[s[0]].visibility+lm[s[1]].visibility+lm[s[2]].visibility;
+  const L=[11,13,15],R=[12,14,16];
+  const arm=sc(L)>=sc(R)?L:R;
+  const elbow=ang(lm[arm[0]],lm[arm[1]],lm[arm[2]]);
+  const sh=mid(lm,11,12), hip=mid(lm,23,24);
+  const dx=(hip.x-sh.x)*aspect, dy=hip.y-sh.y;
+  let tilt=Math.abs(Math.atan2(dy,dx)*180/Math.PI);
+  if(tilt>90) tilt=180-tilt;                 // 0° = корпус горизонтален
+  return {elbow,tilt,shY:sh.y,hipY:hip.y};
 }
 
-/* ═══ конечный автомат повторения ═══ */
-function step(elbowA, bodyA, now){
-  if(bodyA < S.minBody) S.minBody = bodyA;
+/* ═══ скелет поверх видео ═══ */
+function drawBones(lm,ok){
+  const w=el.bones.width, h=el.bones.height;
+  ctx.clearRect(0,0,w,h);
+  if(!lm) return;
+  const X=p=>(1-p.x)*w, Y=p=>p.y*h;      // зеркалим под превью
+  ctx.lineWidth=Math.max(2,w/110);
+  ctx.strokeStyle=ok?'#2B59FF':'#E0451B';
+  BONES.forEach(([a,b])=>{
+    if(!lm[a]||!lm[b])return;
+    ctx.beginPath();ctx.moveTo(X(lm[a]),Y(lm[a]));ctx.lineTo(X(lm[b]),Y(lm[b]));ctx.stroke();
+  });
+  ctx.fillStyle=ok?'#0FA958':'#E0451B';
+  KEY.forEach(i=>{ if(!lm[i])return;
+    ctx.beginPath();ctx.arc(X(lm[i]),Y(lm[i]),Math.max(3,w/70),0,7);ctx.fill(); });
+}
 
+/* ═══ колонка ═══ */
+function paint(elbow,hipOK){
+  if(!C) return;
+  const p=Math.max(0,Math.min(1,(C.up-elbow)/Math.max(1,C.up-C.bottom)));
+  el.fill.style.height=(p*100).toFixed(1)+'%';
+  el.column.classList.toggle('deep',elbow<=C.deep);
+  el.column.classList.toggle('sag',!hipOK);
+}
+
+/* ═══ автомат повторения ═══ */
+function step(m,now){
   if(S.state==='up'){
-    if(elbowA < DOWN_ANGLE){ S.state='down'; S.minElbow=elbowA; }
+    S.shTop=m.shY; S.hipTop=m.hipY;
+    if(m.elbow<C.down){
+      S.state='down'; S.minElbow=m.elbow;
+      S.shMin=m.shY; S.hipMin=m.hipY; S.maxTilt=Math.abs(m.tilt-C.tilt);
+    }
   }else{
-    if(elbowA < S.minElbow) S.minElbow = elbowA;
-    if(elbowA > UP_ANGLE && now - S.lastRepAt > MIN_REP_MS){
-      countRep(now);
-      S.state='up'; S.minElbow=180; S.minBody=180;
+    if(m.elbow<S.minElbow) S.minElbow=m.elbow;
+    if(m.shY>S.shMin) S.shMin=m.shY;
+    if(m.hipY>S.hipMin) S.hipMin=m.hipY;
+    const dt=Math.abs(m.tilt-C.tilt); if(dt>S.maxTilt) S.maxTilt=dt;
+    if(m.elbow>C.up && now-S.lastRepAt>MIN_REP_MS){
+      judge(now); S.state='up'; S.minElbow=180;
     }
   }
 }
 
-function countRep(now){
-  S.lastRepAt = now;
+function judge(now){
+  S.lastRepAt=now;
+  const dSh=S.shMin-S.shTop, dHip=S.hipMin-S.hipTop;
+  const ratio = dSh>0.01 ? dHip/dSh : 0;
+
+  let fail=null;
+  if(ratio<HIP_RATIO_MIN) fail='таз не опускался';
+  else if(S.maxTilt>TILT_MAX) fail='корпус не в линию';
+
+  if(fail){
+    S.bad++; S.combo=1;
+    el.combo.classList.remove('on');
+    el.reject.textContent='не засчитано — '+fail;
+    el.reject.classList.add('on');
+    setTimeout(()=>el.reject.classList.remove('on'),1400);
+    tone(150,260,'sawtooth');
+    return;
+  }
+
   S.reps++;
+  const deep=S.minElbow<=C.deep;
+  if(deep) S.deep++;
+  S.combo=deep?Math.min(2,S.combo+0.2):1;
+  S.score+=Math.round(10*(deep?1.5:1)*S.combo);
 
-  const isDeep  = S.minElbow <= DEEP_ANGLE;
-  const isClean = S.minBody  >= BODY_MIN;
-  if(isDeep)  S.deep++;
-  if(isClean) S.clean++;
-
-  // комбо растёт только на глубоких и чистых, иначе сбрасывается
-  S.combo = (isDeep && isClean) ? Math.min(2, S.combo + 0.2) : 1;
-
-  const pts = Math.round(10 * (isDeep?1.5:1) * (isClean?1.2:1) * S.combo);
-  S.score += pts;
-
-  el.count.textContent = S.reps;
-  el.score.textContent = S.score;
-  el.count.classList.toggle('deep', isDeep);
+  el.count.textContent=S.reps;
+  el.score.textContent=S.score;
+  el.count.classList.toggle('deep',deep);
   el.count.classList.add('pop');
-  setTimeout(()=>el.count.classList.remove('pop'), 110);
+  setTimeout(()=>el.count.classList.remove('pop'),100);
+  el.combo.textContent='×'+S.combo.toFixed(1);
+  el.combo.classList.toggle('on',S.combo>1.05);
 
-  el.combo.textContent = '×'+S.combo.toFixed(1);
-  el.combo.classList.toggle('on', S.combo > 1.05);
-
-  beep(isDeep?1180:820, isDeep?120:80);
+  tone(deep?1180:820,deep?110:75);
   say(S.reps);
 }
 
-/* ═══ основной цикл ═══ */
-function loop(){
-  raf = requestAnimationFrame(loop);
-  const v = el.preview;
-  if(!landmarker || v.readyState < 2) return;
+/* ═══ цикл ═══ */
+function tickLoop(){
+  raf=requestAnimationFrame(tickLoop);
+  const v=el.preview;
+  if(!landmarker||v.readyState<2) return;
+  if(v.currentTime===lastVideoTs) return;
+  lastVideoTs=v.currentTime;
 
-  const now = performance.now();
-  if(now - lastDetect < 1000/DETECT_FPS) return;
-  lastDetect = now;
-  if(v.currentTime === lastVideoTs) return;
-  lastVideoTs = v.currentTime;
+  if(el.bones.width!==v.videoWidth){el.bones.width=v.videoWidth;el.bones.height=v.videoHeight;}
+  aspect=(v.videoWidth||4)/(v.videoHeight||3);
 
-  aspect = (v.videoWidth||4)/(v.videoHeight||3);
-  const res = landmarker.detectForVideo(v, now);
-  const lm = res.landmarks?.[0];
+  const now=performance.now();
+  const lm=landmarker.detectForVideo(v,now).landmarks?.[0];
+  const ok=!!lm&&KEY.every(i=>(lm[i]?.visibility??0)>=VIS_MIN);
+  el.cam.classList.toggle('lost',!ok);
+  drawBones(lm,ok);
 
-  const ok = lm && KEY.every(i => vis(lm,i));
-  v.classList.toggle('lost', !ok);
+  if(phase==='idle') return;
+  if(!ok){
+    holdStart=0; el.barfill.style.width='0%';
+    if(phase!=='counting') el.calmsg.innerHTML='Не вижу вас целиком.<br><b>Отодвиньте телефон или разверните экран.</b>';
+    return;
+  }
+  const m=read(lm);
 
-  if(phase==='framing'){
-    if(ok){
-      if(!seenSince) seenSince = now;
-      const left = 1500 - (now - seenSince);
-      el.framemsg.textContent = 'Вижу вас. Держите позу.';
-      if(left <= 0) startCountdown();
-    }else{
-      seenSince = 0;
-      el.framemsg.innerHTML = 'Не вижу вас целиком.<br><b>Отодвиньте телефон дальше или разверните экран.</b>';
+  if(phase==='cal1'||phase==='cal2'){
+    if(!holdStart) holdStart=now;
+    const p=Math.min(1,(now-holdStart)/HOLD_MS);
+    el.barfill.style.width=(p*100)+'%';
+    el.calmsg.textContent = phase==='cal1'
+      ? 'Упор лёжа на прямых руках. Держите.'
+      : 'Нижняя точка. Держите.';
+    if(p>=1){
+      if(phase==='cal1'){
+        C={up:m.elbow-6,tilt:m.tilt,bottom:90,down:120,deep:100};
+        tone(880,120); holdStart=0; phase='cal2';
+        el.calstage.textContent='Шаг 3 из 3';
+      }else{
+        C.bottom=m.elbow;
+        const range=Math.max(20,C.up-C.bottom);
+        C.down=C.bottom+range*0.35;
+        C.deep=C.bottom+range*0.15;
+        saveCal(); loadCal();
+        tone(1180,200); holdStart=0;
+        countdown();
+      }
     }
     return;
   }
 
-  if(phase !== 'counting' || !ok) return;
+  if(phase!=='counting') return;
 
-  const {elbowA, bodyA} = readAngles(lm);
-  const bodyOK = bodyA >= BODY_MIN;
+  const hipOK = S.state==='up' || (S.shMin-S.shTop<0.01) ||
+                (S.hipMin-S.hipTop)/(S.shMin-S.shTop)>=HIP_RATIO_MIN;
+  el.elbow.textContent=Math.round(m.elbow)+'°';
+  el.elbow.className=m.elbow<=C.deep?'hot':'';
+  const r=(S.shMin-S.shTop)>0.01?(S.hipMin-S.hipTop)/(S.shMin-S.shTop):1;
+  el.hipm.textContent=S.state==='down'?Math.round(Math.min(1,Math.max(0,r))*100)+'%':'—';
+  el.hipm.className=hipOK?'':'bad';
 
-  el.elbow.textContent = Math.round(elbowA)+'°';
-  el.body.textContent  = Math.round(bodyA)+'°';
-  el.elbow.className = elbowA<=DEEP_ANGLE ? 'hot' : '';
-  el.body.className  = bodyOK ? '' : 'bad';
-
-  paintColumn(elbowA, bodyOK);
-  step(elbowA, bodyA, now);
+  paint(m.elbow,hipOK);
+  step(m,now);
 }
 
-/* ═══ обратный отсчёт ═══ */
-function startCountdown(){
-  phase='idle';
-  let n=3;
-  el.framemsg.textContent = 'Начинаем';
-  el.tick.textContent = n;
-  beep(660,110);
-  const iv = setInterval(()=>{
+/* ═══ отсчёт ═══ */
+function countdown(){
+  phase='idle'; let n=3;
+  el.calmsg.textContent='Начинаем'; el.barfill.style.width='0%';
+  el.tick.textContent=n; tone(660,110);
+  const iv=setInterval(()=>{
     n--;
-    if(n>0){ el.tick.textContent=n; beep(660,110); }
+    if(n>0){el.tick.textContent=n;tone(660,110);}
     else{
-      clearInterval(iv);
-      el.tick.textContent='';
-      beep(1180,220);
-      resetSet();
-      el.count.textContent='0'; el.score.textContent='0';
-      el.combo.classList.remove('on'); el.count.classList.remove('deep');
+      clearInterval(iv); el.tick.textContent='';
+      tone(1180,220); resetSet();
+      el.count.textContent='0';el.score.textContent='0';
+      el.combo.classList.remove('on');el.count.classList.remove('deep');
       show('live'); phase='counting';
     }
   },1000);
 }
 
-/* ═══ запуск / остановка ═══ */
-async function begin(){
-  el.starterr.textContent='';
-  el.go.disabled = true;
-  el.go.textContent = 'Запускаю…';
-  try{
-    stream = await navigator.mediaDevices.getUserMedia({
-      video:{ facingMode:'user', width:{ideal:640}, height:{ideal:480} }, audio:false
-    });
-    el.preview.srcObject = stream;
-    el.preview.classList.add('on');
-    await el.preview.play();
+function startFlow(skipCal){
+  show('cal'); holdStart=0; el.barfill.style.width='0%';
+  if(skipCal&&C){ el.calstage.textContent='Готово'; countdown(); }
+  else{ el.calstage.textContent='Шаг 2 из 3'; phase='cal1'; }
+}
 
-    show('frame');
-    el.framemsg.textContent = 'Загружаю модель…';
+/* ═══ запуск ═══ */
+async function begin(){
+  el.starterr.textContent=''; el.go.disabled=true; el.go.textContent='Запускаю…';
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+    el.preview.srcObject=stream; el.cam.classList.add('on'); await el.preview.play();
+
+    show('cal'); el.calstage.textContent='Шаг 1 из 3'; el.calmsg.textContent='Загружаю модель…';
 
     if(!landmarker){
-      const vision = await FilesetResolver.forVisionTasks(
+      const vision=await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
-      landmarker = await PoseLandmarker.createFromOptions(vision,{
-        baseOptions:{
-          modelAssetPath:"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
-          delegate:"GPU"
-        },
-        runningMode:"VIDEO", numPoses:1
-      });
+      const opts=d=>({baseOptions:{modelAssetPath:
+        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+        delegate:d},runningMode:"VIDEO",numPoses:1});
+      try{ landmarker=await PoseLandmarker.createFromOptions(vision,opts("GPU")); }
+      catch(e){ landmarker=await PoseLandmarker.createFromOptions(vision,opts("CPU")); }
     }
-
-    try{ wakeLock = await navigator.wakeLock.request('screen'); }catch(e){}
-    beep(440,60);            // разблокируем звук по жесту пользователя
-    seenSince = 0;
-    phase = 'framing';
-    if(!raf) loop();
+    try{ wakeLock=await navigator.wakeLock.request('screen'); }catch(e){}
+    tone(440,60);
+    if(!raf) tickLoop();
+    startFlow(!!C);
   }catch(e){
     show('start');
     el.starterr.textContent = e.name==='NotAllowedError'
       ? 'Доступ к камере запрещён. Разрешите камеру в адресной строке и нажмите ещё раз.'
       : 'Не удалось запустить: '+e.message;
-  }finally{
-    el.go.disabled = false;
-    el.go.textContent = 'Включить камеру';
-  }
+  }finally{ el.go.disabled=false; el.go.textContent='Включить камеру'; }
 }
 
 function finish(){
   phase='idle';
-  el.dReps.textContent  = S.reps  ?? 0;
-  el.dScore.textContent = S.score ?? 0;
-  el.dDeep.textContent  = S.deep  ?? 0;
-  el.dClean.textContent = S.clean ?? 0;
-  el.fill.style.height='0%';
-  show('done');
+  el.dReps.textContent=S.reps||0; el.dScore.textContent=S.score||0;
+  el.dDeep.textContent=S.deep||0; el.dBad.textContent=S.bad||0;
+  el.fill.style.height='0%'; show('done');
 }
-
 function shutdown(){
   phase='idle';
-  if(raf){ cancelAnimationFrame(raf); raf=null; }
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-  if(wakeLock){ wakeLock.release().catch(()=>{}); wakeLock=null; }
-  el.preview.classList.remove('on');
-  el.fill.style.height='0%';
-  show('start');
+  if(raf){cancelAnimationFrame(raf);raf=null;}
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+  if(wakeLock){wakeLock.release().catch(()=>{});wakeLock=null;}
+  el.cam.classList.remove('on'); el.fill.style.height='0%'; show('start');
 }
 
-el.go.addEventListener('click', begin);
-el.cancel.addEventListener('click', shutdown);
-el.stop.addEventListener('click', finish);
-el.home.addEventListener('click', shutdown);
-el.again.addEventListener('click', ()=>{ seenSince=0; phase='framing'; show('frame'); });
-
-document.addEventListener('visibilitychange', ()=>{
-  if(document.hidden && phase==='counting') finish();
-});
-
+el.go.onclick=begin;
+el.cancel.onclick=shutdown;
+el.stop.onclick=finish;
+el.home.onclick=shutdown;
+el.again.onclick=()=>startFlow(true);
+el.redo.onclick=()=>{C=null;loadCal();startFlow(false);};
+el.recal.onclick=()=>{C=null;try{localStorage.removeItem('otzhim.cal')}catch(e){}loadCal();};
+el.cam.onclick=()=>{
+  const o=['s','m','l'],i=o.findIndex(c=>el.cam.classList.contains(c));
+  el.cam.classList.remove(...o); el.cam.classList.add(o[(i+1)%3]);
+};
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&phase==='counting')finish();});
 resetSet();
 </script>
 </body>

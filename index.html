@@ -140,7 +140,7 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
   </div>
   <div class="row"><button class="ghost" id="recal" style="display:none">Сбросить калибровку</button></div>
   <p id="err" class="err"></p>
-  <p class="ver">версия 9 · счёт лицом к камере</p>
+  <p class="ver">версия 10 · подъём плеч над кистями</p>
 </section>
 
 <section id="done" class="sheet">
@@ -183,7 +183,7 @@ showRecal();
 
 function resetSet(){
   S={reps:0,score:0,bad:0,combo:1,state:'up',
-     shTop:0,hipTop:0,shMin:0,hipMin:0,shapeBad:false,lastRep:0,deepest:0};
+     liftMin:9,shapeBad:false,lastRep:0};
 }
 resetSet();
 
@@ -217,8 +217,8 @@ function measure(lm){
   const arm=Math.max(armL,armR)||0.2;
   return {
     shY:sh.y, hipY:hip.y,
-    shape:D(sh,hip)/arm,            // пропорция корпус/рука: меняется, если встать
-    hands:(wr.y-sh.y)/arm,          // кисти ниже плеч — опора на пол
+    shape:D(sh,hip)/arm,      // пропорция корпус/рука: меняется, если встать
+    lift:(wr.y-sh.y)/arm,     // подъём плеч над кистями — не зависит от кадра
     arm
   };
 }
@@ -281,33 +281,30 @@ function poseOK(m){
 
 /* ── автомат повторения ── */
 function engine(m,now){
-  const rng=Math.max(0.02,C.bot-C.top);
-  const down=C.top+rng*0.55, up=C.top+rng*0.22;
-  gauge((m.shY-C.top)/rng);
+  // самоподстройка верха: выпрямились выше калибровки — расширяем диапазон
+  if(S.state==='up'&&m.lift>C.liftTop) C.liftTop+=(m.lift-C.liftTop)*0.25;
+
+  const rng=Math.max(0.12,C.liftTop-C.liftBot);
+  const down=C.liftTop-rng*0.55, up=C.liftTop-rng*0.25;
+  gauge((C.liftTop-m.lift)/rng);
 
   if(S.state==='up'){
-    S.shTop=m.shY;S.hipTop=m.hipY;
-    if(m.shY>down){
-      S.state='down';S.shMin=m.shY;S.hipMin=m.hipY;
-      S.shapeBad=false;S.deepest=m.shY;
-    }
+    if(m.lift<down){S.state='down';S.liftMin=m.lift;S.shapeBad=false;}
   }else{
-    if(m.shY>S.shMin)S.shMin=m.shY;
-    if(m.hipY>S.hipMin)S.hipMin=m.hipY;
-    if(m.shY>S.deepest)S.deepest=m.shY;
+    if(m.lift<S.liftMin)S.liftMin=m.lift;
     if(Math.abs(m.shape-C.shape)>SHAPE_TOL)S.shapeBad=true;
-    if(m.shY<up && now-S.lastRep>MIN_REP){judge(m,now);S.state='up';}
+    if(m.lift>up && now-S.lastRep>MIN_REP){judge(now);S.state='up';}
   }
 }
 
-function judge(m,now){
+function judge(now){
   S.lastRep=now;
-  const dSh=S.shMin-S.shTop;
-  const rng=Math.max(0.02,C.bot-C.top);
+  const rng=Math.max(0.12,C.liftTop-C.liftBot);
+  const depth=C.liftTop-S.liftMin;
 
   let fail=null;
   if(S.shapeBad) fail='корпус не в линию';
-  else if(dSh < rng*0.45) fail='слишком мелко';
+  else if(depth<rng*0.45) fail='слишком мелко';
 
   if(fail){
     S.bad++;S.combo=1;
@@ -316,8 +313,11 @@ function judge(m,now){
     tone(140,240,'sawtooth');return;
   }
 
+  // опустились ниже прежней нижней точки — запоминаем
+  if(S.liftMin<C.liftBot) C.liftBot+=(S.liftMin-C.liftBot)*0.3;
+
   S.reps++;
-  const deep=(S.deepest-C.top)/rng>=0.85;
+  const deep=depth>=rng*0.85;
   S.combo=deep?Math.min(2,S.combo+0.2):1;
   S.score+=Math.round(10*(deep?1.5:1)*S.combo);
   E.reps.textContent=S.reps;E.score.textContent=S.score;
@@ -361,10 +361,10 @@ function loop(){
       : 'Опуститесь в нижнюю точку.<br><em>Держите 2 секунды.</em>');
     if(p>=1){
       if(phase==='cal1'){
-        C={top:m.shY,shape:m.shape,hands:m.hands,bot:m.shY+0.1};
+        C={liftTop:m.lift,shape:m.shape,liftBot:m.lift-0.5};
         tone(880,120);hold=0;phase='cal2';
       }else{
-        C.bot=Math.max(m.shY,C.top+0.03);
+        C.liftBot=Math.min(m.lift,C.liftTop-0.15);
         try{localStorage.setItem('otzhim6',JSON.stringify(C))}catch(e){}
         showRecal();tone(1200,200);hold=0;countdown();
       }

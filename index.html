@@ -237,8 +237,6 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
     <div class="xpbar"><i id="plXp"></i></div>
   </div>
 
-  <div class="mycode">Ваш код <b id="myCode">—</b><span>друг может вписать его и попасть прямо к вам</span></div>
-
   <div id="missions"><div class="mhead">Миссии дня</div></div>
 
   <div class="menu">
@@ -251,28 +249,26 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   </div>
   <div class="row"><button class="ghost" id="recal" style="display:none">Сбросить калибровку</button></div>
   <p id="err" class="err"></p>
-  <p class="ver">версия 20 · личный код · защита от сбоя сети</p>
+  <p class="ver">версия 23 · поиск 15 секунд</p>
 </section>
 
 <section id="search" class="sheet">
   <h2>Ищем соперника</h2>
   <div class="spin"></div>
   <p class="wait" id="searchTxt">Подбираем по вашему уровню…</p>
-  <div class="row">
-    <button id="searchBot">Играть с ботом</button>
-    <button class="ghost" id="searchCancel">Отмена</button>
-  </div>
+  <div class="row"><button class="ghost" id="searchCancel">Отмена</button></div>
 </section>
 
 <section id="fr" class="sheet">
   <h2>Игра с другом</h2>
+  <div class="mycode">Ваш постоянный код <b id="myCode">—</b><span>он не меняется, друг может вписать его когда угодно</span></div>
   <div class="menu" id="frPick">
     <button id="frHost">Создать код</button>
     <button id="frJoin">Ввести код</button>
   </div>
 
   <div id="frHostBox" style="display:none">
-    <p class="wait">Продиктуйте другу этот код</p>
+    <p class="wait">Продиктуйте другу свой постоянный код</p>
     <div class="code" id="frCode">—</div>
     <div class="spin"></div>
     <p class="wait">Ждём подключения…</p>
@@ -356,7 +352,7 @@ const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23
 const $=i=>document.getElementById(i), E={};
 ['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
  'bottom','stopb','stage','start','done','go','err','recal','voice','again','redo','home',
- 'dR','dS','dT','dB','play','friend','solo','search','searchTxt','searchCancel','searchBot','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','myCode','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
+ 'dR','dS','dT','dB','play','friend','solo','search','searchTxt','searchCancel','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','myCode','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
@@ -436,7 +432,7 @@ function endDuel(){
   if(NET){
     pushReps(S.reps);
     if(NET.me==='a'){ stopHeartbeat();
-      setTimeout(()=>{closeMyRoom();},1500); }
+      const id=NET.rid; setTimeout(()=>{closeRoom(id);},1500); }
   }
   clearTimeout(readyTimer);
   tone(300,400,'sine');
@@ -465,10 +461,9 @@ function endDuel(){
 
 /* ── связь через Firebase ── */
 const READY_WAIT=75000;     // столько ждём готовности соперника
-const SEARCH_MS=30000;      // столько ищем живого соперника
+const SEARCH_MS=15000;      // столько ищем живого соперника
 
 let NET=null;               // {rid, me:'a'|'b', foe:'a'|'b'}
-let botNow=null;            // ранний выход из поиска к боту
 let roomRef=null, roomUnsub=null, goneToDuel=false;
 
 function myLvl(){return level()}
@@ -495,21 +490,26 @@ function stopHeartbeat(){ if(hbTimer){clearInterval(hbTimer);hbTimer=0;} }
 
 const roomPath=code=>'rooms/'+code;
 
-/* открыть свою комнату и объявить её в списке */
-async function openMyRoom(){
-  const p=roomPath(CODE);
-  await set(ref(db,p),{a:{uid:UID,code:CODE,reps:0,ready:false},
+let QID=null;               // разовый номер комнаты для быстрой игры
+
+/* открыть комнату; listed=true — объявить её в списке поиска */
+async function openRoom(id,listed){
+  const p=roomPath(id);
+  await set(ref(db,p),{a:{uid:UID,reps:0,ready:false},
                        b:{uid:null,reps:0,ready:false},
                        go:false,joined:false,hb:'0'});
-  await set(ref(db,'open/'+CODE),true);
   try{ onDisconnect(ref(db,p)).remove(); }catch(e){}
-  try{ onDisconnect(ref(db,'open/'+CODE)).remove(); }catch(e){}
+  if(listed){
+    await set(ref(db,'open/'+id),true);
+    try{ onDisconnect(ref(db,'open/'+id)).remove(); }catch(e){}
+  }
   startHeartbeat(p);
 }
-async function closeMyRoom(){
+async function closeRoom(id){
+  if(!id) return;
   stopHeartbeat();
-  await remove(ref(db,'open/'+CODE)).catch(()=>{});
-  await remove(ref(db,roomPath(CODE))).catch(()=>{});
+  await remove(ref(db,'open/'+id)).catch(()=>{});
+  await remove(ref(db,roomPath(id))).catch(()=>{});
 }
 
 /* попытка зайти в чужую комнату; true — получилось */
@@ -525,7 +525,7 @@ async function tryJoin(code,say){
   let v2=null; try{ v2=(await get(ref(db,p))).val(); }catch(e){ return false; }
   if(!v2){ remove(ref(db,'open/'+code)).catch(()=>{}); return false; }
   if(v2.hb===hb1){                                  // хозяин не отвечает — сношу
-    say&&say('Комната '+code+' брошена. Убираю…');
+    say&&say('Комната брошена. Убираю…');
     await remove(ref(db,p)).catch(()=>{});
     await remove(ref(db,'open/'+code)).catch(()=>{});
     return false;
@@ -549,25 +549,25 @@ async function findMatch(){
   };
 
   if(!FB_OK){ NET=null; return null; }
-  say('Открываю комнату '+CODE+'…');
-  try{ await openMyRoom(); }catch(e){ say('Нет связи с базой…'); }
+  QID='q'+push(ref(db,'rooms')).key.slice(-10);
+  say('Ищем соперника…');
+  try{ await openRoom(QID,true); }catch(e){ say('Нет связи с базой…'); }
 
   return await new Promise(res=>{
     let done=false, iv=0, busy=false;
     const finish=async v=>{
       if(done) return; done=true;
       clearInterval(iv);
-      try{ off(ref(db,roomPath(CODE)+'/joined')); }catch(e){}
-      if(!v || v.me==='b') await closeMyRoom();     // свою комнату закрываем
+      try{ off(ref(db,roomPath(QID)+'/joined')); }catch(e){}
+      if(!v || v.me==='b') await closeRoom(QID);   // свою комнату закрываем
       res(v);
     };
-    botNow=()=>{ NET=null; finish(null); };
 
     // ко мне зашли
-    const jr=ref(db,roomPath(CODE)+'/joined');
+    const jr=ref(db,roomPath(QID)+'/joined');
     onValue(jr,snap=>{
       if(snap.val()===true && !done){
-        off(jr); NET={rid:CODE,me:'a',foe:'b'}; finish(NET);
+        off(jr); NET={rid:QID,me:'a',foe:'b'}; finish(NET);
       }
     });
 
@@ -578,11 +578,11 @@ async function findMatch(){
       try{
         let list={};
         try{ list=(await get(ref(db,'open'))).val()||{}; }catch(e){ say('Нет связи с базой…'); return; }
-        const cands=Object.keys(list).filter(c=>c!==CODE && c<CODE).sort();
+        const cands=Object.keys(list).filter(c=>c!==QID && c<QID).sort();
         if(!cands.length){
           const n=Object.keys(list).length;
-          say(n>1 ? 'В сети '+n+'. Ждём, пока зайдут ко мне…'
-                  : 'Комната '+CODE+' открыта. Ждём соперника…');
+          say(n>1 ? 'В сети '+n+'. Ждём, пока к нам подключатся…'
+                  : 'Пока никого. Ждём соперника…');
           return;
         }
         for(const c of cands){
@@ -602,7 +602,7 @@ async function hostGame(){
   E.frPick.style.display='none'; E.frHostBox.style.display=''; E.frMsg.textContent='';
   E.frCode.textContent=CODE;
   try{
-    await openMyRoom();
+    await openRoom(CODE,false);
     const jr=ref(db,roomPath(CODE)+'/joined');
     onValue(jr,snap=>{
       if(snap.val()===true){
@@ -654,7 +654,7 @@ function pushReps(n){ if(NET) update(ref(db,'rooms/'+NET.rid+'/'+NET.me),{reps:n
 function leaveNet(){
   stopHeartbeat();
   if(FB_OK){
-    remove(ref(db,'open/'+CODE)).catch(()=>{});
+    if(QID){ remove(ref(db,'open/'+QID)).catch(()=>{}); remove(ref(db,roomPath(QID))).catch(()=>{}); QID=null; }
     remove(ref(db,roomPath(CODE))).catch(()=>{});
   }
   try{ if(roomRef&&roomUnsub) off(roomRef); }catch(e){}
@@ -1166,7 +1166,6 @@ E.play.onclick=async()=>{
   else { leaveNet(); OPP=makeBot(); }
   begin();
 };
-E.searchBot.onclick=()=>{ if(botNow) botNow(); };
 E.searchCancel.onclick=()=>{
   searchCancelled=true;
   leaveNet();

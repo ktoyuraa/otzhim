@@ -66,6 +66,13 @@ body{font-family:Inter,system-ui,sans-serif;color:var(--paper)}
 #barfill{height:100%;width:0;background:var(--hi)}
 
 /* ── нижняя кнопка ── */
+#simwrap{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:16px;z-index:5;padding:24px}
+#simwrap.on{display:flex}
+#simbtn{background:var(--hi);color:#04160B;font-size:20px;padding:34px 46px;border-radius:24px;
+  font-family:'Archivo Black',sans-serif;letter-spacing:0;text-transform:none}
+#simbtn:active{transform:scale(.97)}
+#simnote{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);text-align:center;line-height:1.6}
 #bottom{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 18px);
   display:none;justify-content:center}
 #bottom.on{display:flex}
@@ -197,6 +204,11 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
     <div id="dbar"><i id="dbarfill"></i></div>
   </div>
 
+  <div id="simwrap">
+    <button id="simbtn">Отжался</button>
+    <p id="simnote">Режим проверки без камеры.<br>Нажимайте кнопку вместо отжиманий.</p>
+  </div>
+
   <div id="hint"></div>
   <div id="bar"><div id="barfill"></div></div>
   <div id="tick"></div>
@@ -325,7 +337,7 @@ const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23
 const $=i=>document.getElementById(i), E={};
 ['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
  'bottom','stopb','stage','start','done','go','err','recal','voice','again','redo','home',
- 'dR','dS','dT','dB','play','friend','solo','search','searchTxt','searchCancel','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
+ 'dR','dS','dT','dB','play','friend','solo','search','searchTxt','searchCancel','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
@@ -343,6 +355,9 @@ function resetSet(){
 resetSet();
 
 
+
+const SIM=new URLSearchParams(location.search).has('sim');
+let simTimer=0;
 
 /* ═══════════ ДУЭЛЬ ═══════════ */
 const DUR=60;                      // длительность боя, секунд
@@ -398,6 +413,7 @@ function duelTick(now){
 function endDuel(){
   ended=true; phase='idle'; hint('');
   E.dhud.classList.remove('on'); E.gauge.classList.remove('on'); E.bottom.classList.remove('on');
+  E.simwrap.classList.remove('on');
   if(NET){ pushReps(S.reps); }
   clearTimeout(readyTimer);
   tone(300,400,'sine');
@@ -564,6 +580,15 @@ function dropPeer(){ leaveNet(); }
 /* ── готовность после калибровки ── */
 let readyTimer=0;
 function afterCal(){
+  if(SIM&&MODE==='duel'&&!(OPP&&OPP.bot)){
+    hint('Заглушка готова.<br><em>Ждём соперника.</em>');
+    watchRoom(()=>{ clearTimeout(readyTimer); hint(''); E.simwrap.classList.add('on'); startDuel(); });
+    markReady();
+    clearTimeout(readyTimer);
+    readyTimer=setTimeout(()=>{ if(goneToDuel)return;
+      leaveNet(); OPP=makeBot(); hint(''); startDuel(); },READY_WAIT);
+    return;
+  }
   if(MODE==='solo'){ countdown(); return; }
   if(OPP&&OPP.bot){ startDuel(); return; }
   hint('Вы готовы.<br><em>Ждём соперника.</em>');
@@ -948,6 +973,16 @@ function flow(skip){
 }
 
 async function begin(){
+  if(SIM){                       // проверка без камеры
+    E.start.classList.remove('on');
+    E.simwrap.classList.add('on');
+    resetSet();
+    if(!simTimer) simTimer=setInterval(()=>{
+      if(phase==='counting'&&MODE==='duel'&&!ended) duelTick(performance.now());
+    },200);
+    afterCal();
+    return;
+  }
   E.err.textContent='';
   [E.play,E.friend,E.solo].forEach(b=>b.disabled=true);
   try{
@@ -1000,7 +1035,7 @@ function stopAll(){
   E.hud.classList.remove('on');E.gauge.classList.remove('on');
   E.bottom.classList.remove('on');E.bar.classList.remove('on');
   E.done.classList.remove('on');E.duelend.classList.remove('on');
-  E.dhud.classList.remove('on');E.search.classList.remove('on');E.fr.classList.remove('on');
+  E.simwrap.classList.remove('on');E.dhud.classList.remove('on');E.search.classList.remove('on');E.fr.classList.remove('on');
   MODE='solo';OPP=null;dropPeer();
   E.start.classList.add('on');
 }
@@ -1010,6 +1045,13 @@ E.stopb.onclick=()=>{ MODE==='duel' ? endDuel() : finish(); };
 E.home.onclick=stopAll;
 
 /* меню */
+E.simbtn.onclick=()=>{
+  if(phase!=='counting') return;
+  S.reps=(S.reps||0)+1; S.deep++;
+  if(MODE==='duel'){ pushReps(S.reps); paintDuel(Math.max(0,(duelEnd-performance.now())/1000)); }
+  E.reps.textContent=S.reps;
+  tone(840,70);
+};
 E.solo.onclick=()=>{MODE='solo';OPP=null;dropPeer();begin();};
 let searchCancelled=false;
 E.play.onclick=async()=>{

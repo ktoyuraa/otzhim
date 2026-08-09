@@ -102,6 +102,34 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
 .st b{display:block;font-family:'Archivo Black',sans-serif;font-size:40px;
   color:var(--paper);letter-spacing:-.02em;margin-top:4px}
 .st.w b{color:var(--lo)}
+/* игрок и миссии */
+#player{display:flex;flex-direction:column;gap:9px}
+.plrow{display:flex;gap:26px;font-family:'IBM Plex Mono',monospace;font-size:10px;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--dim)}
+.plrow b{display:block;font-family:'Archivo Black',sans-serif;font-size:22px;
+  color:var(--paper);letter-spacing:-.02em;margin-top:3px}
+.plrow .g b{color:var(--hi)}
+.plrow .y b{color:var(--gold)}
+.xpbar{height:5px;background:#1B2126;border-radius:3px;overflow:hidden}
+.xpbar i{display:block;height:100%;background:var(--hi);width:0}
+#missions{display:flex;flex-direction:column;gap:11px}
+.mhead{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--dim)}
+.m{background:#141A1F;border:1px solid #1F272D;border-radius:12px;padding:12px 14px;
+  display:flex;flex-direction:column;gap:8px}
+.m.done{border-color:var(--hi);background:#0F1C15}
+.mtop{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.mt{font-size:13.5px;line-height:1.35}
+.mr{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--gold);white-space:nowrap}
+.m.done .mr{color:var(--hi)}
+.mbar{height:4px;background:#222A31;border-radius:2px;overflow:hidden}
+.mbar i{display:block;height:100%;background:var(--mid)}
+.m.done .mbar i{background:var(--hi)}
+.mn{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim)}
+#mres{display:flex;flex-direction:column;gap:9px}
+.mrow{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);
+  display:flex;justify-content:space-between;gap:12px}
+.mrow.ok{color:var(--hi)}
 @media (prefers-reduced-motion:reduce){#ball{transition:none}}
 </style>
 </head>
@@ -134,13 +162,24 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
     <li data-n="02">Проверьте, что в кадр попадают плечи, таз и колени</li>
     <li data-n="03">Калибровка: верхняя точка и нижняя, по 2 секунды</li>
   </ul>
+  <div id="player">
+    <div class="plrow">
+      <div>Уровень<b id="plLvl">1</b></div>
+      <div class="g">Серия<b id="plStrk">0</b></div>
+      <div class="y">Монеты<b id="plCoin">0</b></div>
+    </div>
+    <div class="xpbar"><i id="plXp"></i></div>
+  </div>
+
+  <div id="missions"><div class="mhead">Миссии дня</div></div>
+
   <div class="row">
     <button id="go">Начать</button>
     <label class="tg"><input type="checkbox" id="voice"> Голосом</label>
   </div>
   <div class="row"><button class="ghost" id="recal" style="display:none">Сбросить калибровку</button></div>
   <p id="err" class="err"></p>
-  <p class="ver">версия 10 · подъём плеч над кистями</p>
+  <p class="ver">версия 11 · проверка сгиба локтя</p>
 </section>
 
 <section id="done" class="sheet">
@@ -151,6 +190,7 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
     <div class="st">Время<b id="dT">0:00</b></div>
     <div class="st w">Отклонено<b id="dB">0</b></div>
   </div>
+  <div id="mres"></div>
   <div class="row">
     <button id="again">Ещё подход</button>
     <button class="ghost" id="redo">Перекалибровать</button>
@@ -162,15 +202,17 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
 import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
 const VIS=0.35, HOLD=2000, MIN_REP=420, GRACE=600;
-const HIP_FOLLOW=0.35;    // таз проходит долю пути плеч
-const SHAPE_TOL=0.45;     // допуск на пропорцию «корпус / рука»
+const ELBOW_FRAC=0.45;    // локоть обязан пройти долю своего диапазона
+const ELBOW_HARD=135;     // и согнуться хотя бы до этого угла
+const WRIST_DRIFT=0.30;   // кисти стоят на месте, в долях длины руки
+const SHAPE_TOL=0.30;     // допуск на пропорцию «корпус / рука»
 const KEYS=[11,12,13,14,15,16,23,24,25,26];
 const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23,25],[24,26],[25,27],[26,28]];
 
 const $=i=>document.getElementById(i), E={};
 ['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
  'bottom','stopb','stage','start','done','go','err','recal','voice','again','redo','home',
- 'dR','dS','dT','dB'].forEach(k=>E[k]=$(k));
+ 'dR','dS','dT','dB','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
@@ -183,9 +225,128 @@ showRecal();
 
 function resetSet(){
   S={reps:0,score:0,bad:0,combo:1,state:'up',
-     liftMin:9,shapeBad:false,lastRep:0};
+     liftMin:9,elbowMin:180,drift:0,wr0:null,shapeBad:false,lastRep:0};
 }
 resetSet();
+
+
+/* ═══════════ ПРОФИЛЬ И МИССИИ ═══════════ */
+const POOL=[
+  {id:'reps', kind:'dayReps',  base:24, per:12, xp:40, coin:15,
+   t:g=>'Сделать '+g+' отжиманий за день'},
+  {id:'set',  kind:'bestSet',  base:9,  per:4,  xp:50, coin:20,
+   t:g=>g+' повторений в одном подходе'},
+  {id:'deep', kind:'dayDeep',  base:12, per:6,  xp:45, coin:18,
+   t:g=>g+' глубоких повторений за день'},
+  {id:'sets', kind:'daySets',  base:2,  per:1,  xp:35, coin:12,
+   t:g=>g+' подхода за день'},
+  {id:'cln',  kind:'cleanSet', base:7,  per:3,  xp:60, coin:25,
+   t:g=>'Подход без ошибок: '+g+' повторений'}
+];
+const XP_LVL=120;                       // опыт на один уровень
+
+function today(){const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function yesterday(){const d=new Date();d.setDate(d.getDate()-1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+let PL=null;
+function loadPL(){
+  try{PL=JSON.parse(localStorage.getItem('otzhim.player')||'null');}catch(e){PL=null;}
+  if(!PL) PL={xp:0,coins:0,streak:0,lastDay:null,day:null,ms:[],
+              d:{reps:0,deep:0,sets:0,best:0},best:0,total:0};
+  rollDay();
+}
+function savePL(){try{localStorage.setItem('otzhim.player',JSON.stringify(PL))}catch(e){}}
+function level(){return Math.floor(PL.xp/XP_LVL)+1}
+
+/* детерминированный выбор заданий по дате: у одного дня всегда одни и те же */
+function seedOf(str){let h=2166136261;
+  for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
+  return h>>>0;}
+function rollDay(){
+  const d=today();
+  if(PL.day===d) return;
+  PL.day=d;
+  PL.d={reps:0,deep:0,sets:0,best:0};
+  let sd=seedOf(d), idx=POOL.map((_,i)=>i);
+  for(let i=idx.length-1;i>0;i--){                  // перемешивание по семени
+    sd=(sd*1103515245+12345)>>>0;
+    const j=sd%(i+1);[idx[i],idx[j]]=[idx[j],idx[i]];
+  }
+  const lv=level();
+  PL.ms=idx.slice(0,3).map(i=>{
+    const m=POOL[i];
+    return {id:m.id,goal:m.base+m.per*(lv-1),prog:0,done:false};
+  });
+  savePL();
+}
+
+function byId(id){return POOL.find(m=>m.id===id)}
+
+/* прогресс миссий после подхода */
+function applySet(reps,deep,bad){
+  rollDay();
+  PL.d.reps+=reps; PL.d.deep+=deep; PL.d.sets+=1;
+  PL.d.best=Math.max(PL.d.best,reps);
+  PL.total+=reps; PL.best=Math.max(PL.best,reps);
+
+  const day=today();
+  if(PL.lastDay!==day){
+    PL.streak = PL.lastDay===yesterday() ? PL.streak+1 : 1;
+    PL.lastDay=day;
+  }
+
+  const news=[];
+  PL.ms.forEach(x=>{
+    const m=byId(x.id); if(!m) return;
+    let v=x.prog;
+    if(m.kind==='dayReps')  v=PL.d.reps;
+    if(m.kind==='dayDeep')  v=PL.d.deep;
+    if(m.kind==='daySets')  v=PL.d.sets;
+    if(m.kind==='bestSet')  v=Math.max(x.prog,reps);
+    if(m.kind==='cleanSet') v=Math.max(x.prog, bad===0?reps:0);
+    x.prog=v;
+    if(!x.done && v>=x.goal){
+      x.done=true; PL.xp+=m.xp; PL.coins+=m.coin;
+      news.push({t:m.t(x.goal),xp:m.xp,coin:m.coin});
+    }
+  });
+  savePL();
+  return news;
+}
+
+/* отрисовка */
+function paintPlayer(){
+  E.plLvl.textContent=level();
+  E.plStrk.textContent=PL.streak;
+  E.plCoin.textContent=PL.coins;
+  E.plXp.style.width=((PL.xp%XP_LVL)/XP_LVL*100)+'%';
+
+  E.missions.innerHTML='<div class="mhead">Миссии дня</div>';
+  PL.ms.forEach(x=>{
+    const m=byId(x.id); if(!m) return;
+    const p=Math.min(1,x.prog/x.goal);
+    const d=document.createElement('div');
+    d.className='m'+(x.done?' done':'');
+    d.innerHTML='<div class="mtop"><div class="mt">'+m.t(x.goal)+'</div>'+
+      '<div class="mr">'+(x.done?'\u2713 получено':'+'+m.xp+' xp')+'</div></div>'+
+      '<div class="mbar"><i style="width:'+(p*100)+'%"></i></div>'+
+      '<div class="mn">'+Math.min(x.prog,x.goal)+' из '+x.goal+'</div>';
+    E.missions.appendChild(d);
+  });
+}
+function paintResult(news){
+  E.mres.innerHTML='';
+  if(!news.length) return;
+  news.forEach(n=>{
+    const r=document.createElement('div');
+    r.className='mrow ok';
+    r.innerHTML='<span>\u2713 '+n.t+'</span><span>+'+n.xp+' xp \u00b7 +'+n.coin+'</span>';
+    E.mres.appendChild(r);
+  });
+}
+loadPL(); paintPlayer();
 
 /* ── звук ── */
 let ac=null;
@@ -206,6 +367,12 @@ function say(n){ if(!E.voice.checked)return;
 /* ── измерения, не зависящие от ракурса ── */
 let asp=1;
 const D=(a,b)=>Math.hypot((a.x-b.x)*asp,a.y-b.y);
+function ang(a,b,c){
+  const ax=(a.x-b.x)*asp,ay=a.y-b.y,cx=(c.x-b.x)*asp,cy=c.y-b.y;
+  const m=Math.hypot(ax,ay)*Math.hypot(cx,cy);
+  if(!m) return 180;
+  return Math.acos(Math.max(-1,Math.min(1,(ax*cx+ay*cy)/m)))*180/Math.PI;
+}
 function pt(lm,i,j){return {x:(lm[i].x+lm[j].x)/2,y:(lm[i].y+lm[j].y)/2};}
 
 function measure(lm){
@@ -215,10 +382,13 @@ function measure(lm){
   const armL=v(13)>=VIS&&v(15)>=VIS ? D(lm[11],lm[13])+D(lm[13],lm[15]) : 0;
   const armR=v(14)>=VIS&&v(16)>=VIS ? D(lm[12],lm[14])+D(lm[14],lm[16]) : 0;
   const arm=Math.max(armL,armR)||0.2;
+  // угол локтя по той руке, что видно лучше
+  const elbow = armR>armL ? ang(lm[12],lm[14],lm[16]) : ang(lm[11],lm[13],lm[15]);
   return {
     shY:sh.y, hipY:hip.y,
     shape:D(sh,hip)/arm,      // пропорция корпус/рука: меняется, если встать
     lift:(wr.y-sh.y)/arm,     // подъём плеч над кистями — не зависит от кадра
+    elbow, wrX:wr.x, wrY:wr.y,
     arm
   };
 }
@@ -289,9 +459,17 @@ function engine(m,now){
   gauge((C.liftTop-m.lift)/rng);
 
   if(S.state==='up'){
-    if(m.lift<down){S.state='down';S.liftMin=m.lift;S.shapeBad=false;}
+    if(m.lift<down){
+      S.state='down';S.liftMin=m.lift;S.shapeBad=false;
+      S.elbowMin=m.elbow;S.wr0={x:m.wrX,y:m.wrY};S.drift=0;
+    }
   }else{
     if(m.lift<S.liftMin)S.liftMin=m.lift;
+    if(m.elbow<S.elbowMin)S.elbowMin=m.elbow;
+    if(S.wr0){
+      const d=Math.hypot((m.wrX-S.wr0.x)*asp,m.wrY-S.wr0.y)/m.arm;
+      if(d>S.drift)S.drift=d;
+    }
     if(Math.abs(m.shape-C.shape)>SHAPE_TOL)S.shapeBad=true;
     if(m.lift>up && now-S.lastRep>MIN_REP){judge(now);S.state='up';}
   }
@@ -302,8 +480,13 @@ function judge(now){
   const rng=Math.max(0.12,C.liftTop-C.liftBot);
   const depth=C.liftTop-S.liftMin;
 
+  const eRng=Math.max(30,C.elbowTop-C.elbowBot);
+  const eNeed=C.elbowTop-eRng*ELBOW_FRAC;
+
   let fail=null;
-  if(S.shapeBad) fail='корпус не в линию';
+  if(S.elbowMin>eNeed||S.elbowMin>ELBOW_HARD) fail='руки не сгибались';
+  else if(S.drift>WRIST_DRIFT) fail='кисти не на месте';
+  else if(S.shapeBad) fail='корпус не в линию';
   else if(depth<rng*0.45) fail='слишком мелко';
 
   if(fail){
@@ -318,6 +501,7 @@ function judge(now){
 
   S.reps++;
   const deep=depth>=rng*0.85;
+  if(deep)S.deep++;
   S.combo=deep?Math.min(2,S.combo+0.2):1;
   S.score+=Math.round(10*(deep?1.5:1)*S.combo);
   E.reps.textContent=S.reps;E.score.textContent=S.score;
@@ -361,10 +545,11 @@ function loop(){
       : 'Опуститесь в нижнюю точку.<br><em>Держите 2 секунды.</em>');
     if(p>=1){
       if(phase==='cal1'){
-        C={liftTop:m.lift,shape:m.shape,liftBot:m.lift-0.5};
+        C={liftTop:m.lift,shape:m.shape,liftBot:m.lift-0.5,elbowTop:m.elbow,elbowBot:m.elbow-70};
         tone(880,120);hold=0;phase='cal2';
       }else{
         C.liftBot=Math.min(m.lift,C.liftTop-0.15);
+        C.elbowBot=Math.min(m.elbow,C.elbowTop-30);
         try{localStorage.setItem('otzhim6',JSON.stringify(C))}catch(e){}
         showRecal();tone(1200,200);hold=0;countdown();
       }
@@ -449,6 +634,8 @@ function finish(){
   E.hud.classList.remove('on');E.gauge.classList.remove('on');E.bottom.classList.remove('on');
   E.dR.textContent=S.reps;E.dS.textContent=S.score;E.dB.textContent=S.bad;
   E.dT.textContent=E.clock.textContent;
+  const news = S.reps>0 ? applySet(S.reps,S.deep,S.bad) : [];
+  paintResult(news); paintPlayer();
   E.done.classList.add('on');
 }
 function stopAll(){

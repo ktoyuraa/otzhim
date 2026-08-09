@@ -159,6 +159,11 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
 #dbar i{display:block;height:100%;background:var(--hi);width:50%;transition:width .25s}
 
 /* меню и коды */
+.mycode{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--dim);display:flex;flex-direction:column;gap:3px}
+.mycode b{font-family:'Archivo Black',sans-serif;font-size:30px;letter-spacing:.14em;
+  color:var(--gold);text-transform:none}
+.mycode span{font-size:10px;letter-spacing:.04em;text-transform:none;opacity:.7}
 .menu{display:flex;flex-direction:column;gap:10px}
 #play{background:var(--hi);color:#04160B;font-size:15px;padding:19px 34px;width:100%}
 #friend{background:#1B242B;color:var(--paper);border:1px solid #2A3740;font-size:13px;padding:16px 30px;width:100%}
@@ -231,6 +236,8 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
     </div>
     <div class="xpbar"><i id="plXp"></i></div>
   </div>
+
+  <div class="mycode">Ваш код <b id="myCode">—</b><span>друг может вписать его и попасть прямо к вам</span></div>
 
   <div id="missions"><div class="mhead">Миссии дня</div></div>
 
@@ -340,7 +347,7 @@ const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23
 const $=i=>document.getElementById(i), E={};
 ['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
  'bottom','stopb','stage','start','done','go','err','recal','voice','again','redo','home',
- 'dR','dS','dT','dB','play','friend','solo','search','searchTxt','searchCancel','searchBot','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
+ 'dR','dS','dT','dB','play','friend','solo','search','searchTxt','searchCancel','searchBot','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','myCode','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
@@ -420,7 +427,7 @@ function endDuel(){
   if(NET){
     pushReps(S.reps);
     if(NET.me==='a'){ stopHeartbeat();
-      setTimeout(()=>remove(ref(db,'rooms/'+NET.rid)).catch(()=>{}),1500); }
+      setTimeout(()=>{closeMyRoom();},1500); }
   }
   clearTimeout(readyTimer);
   tone(300,400,'sine');
@@ -457,10 +464,17 @@ let roomRef=null, roomUnsub=null, goneToDuel=false;
 
 function myLvl(){return level()}
 
-const LOBBY='quick';        // общая комната для быстрой игры
 const HB_MS=1500;           // как часто хозяин подаёт признак жизни
-const PROBE_MS=2600;        // сколько ждём, проверяя, живой ли хозяин
+const PROBE_MS=1400;        // пауза, чтобы убедиться: хозяин живой
 let hbTimer=0;
+
+const ABC='ACEFHJKLMNPRTUVWXY3479';
+function makeCode(){let x='';for(let i=0;i<5;i++)x+=ABC[Math.floor(Math.random()*ABC.length)];return x;}
+const CODE=(()=>{ try{
+    let c=localStorage.getItem('otzhim.code');
+    if(!c){ c=makeCode(); localStorage.setItem('otzhim.code',c); }
+    return c;
+  }catch(e){ return makeCode(); } })();
 
 function startHeartbeat(path){
   stopHeartbeat();
@@ -470,91 +484,142 @@ function startHeartbeat(path){
 }
 function stopHeartbeat(){ if(hbTimer){clearInterval(hbTimer);hbTimer=0;} }
 
-/* Быстрая игра = общая комната. Первый создаёт и подаёт признак жизни,
-   второй заходит. Брошенные комнаты сносятся автоматически. */
+const roomPath=code=>'rooms/'+code;
+
+/* открыть свою комнату и объявить её в списке */
+async function openMyRoom(){
+  const p=roomPath(CODE);
+  await set(ref(db,p),{a:{uid:UID,code:CODE,reps:0,ready:false},
+                       b:{uid:null,reps:0,ready:false},
+                       go:false,joined:false,hb:'0'});
+  await set(ref(db,'open/'+CODE),true);
+  try{ onDisconnect(ref(db,p)).remove(); }catch(e){}
+  try{ onDisconnect(ref(db,'open/'+CODE)).remove(); }catch(e){}
+  startHeartbeat(p);
+}
+async function closeMyRoom(){
+  stopHeartbeat();
+  await remove(ref(db,'open/'+CODE)).catch(()=>{});
+  await remove(ref(db,roomPath(CODE))).catch(()=>{});
+}
+
+/* попытка зайти в чужую комнату; true — получилось */
+async function tryJoin(code,say){
+  const p=roomPath(code);
+  let v=null; try{ v=(await get(ref(db,p))).val(); }catch(e){ return false; }
+  if(!v){ remove(ref(db,'open/'+code)).catch(()=>{}); return false; }
+  if(v.joined===true) return false;
+
+  say&&say('Нашёл '+code+'. Проверяю…');
+  const hb1=v.hb;
+  await new Promise(r=>setTimeout(r,PROBE_MS));
+  let v2=null; try{ v2=(await get(ref(db,p))).val(); }catch(e){ return false; }
+  if(!v2){ remove(ref(db,'open/'+code)).catch(()=>{}); return false; }
+  if(v2.hb===hb1){                                  // хозяин не отвечает — сношу
+    say&&say('Комната '+code+' брошена. Убираю…');
+    await remove(ref(db,p)).catch(()=>{});
+    await remove(ref(db,'open/'+code)).catch(()=>{});
+    return false;
+  }
+  if(v2.joined===true) return false;
+
+  await update(ref(db,p),{joined:true,'b/uid':UID});
+  await new Promise(r=>setTimeout(r,400));
+  let v3=null; try{ v3=(await get(ref(db,p))).val(); }catch(e){ return false; }
+  if(!v3||!v3.b||v3.b.uid!==UID) return false;      // меня опередили
+  NET={rid:code,me:'b',foe:'a'};
+  return true;
+}
+
 async function findMatch(){
   goneToDuel=false;
-  const path='rooms/'+LOBBY;
   const t0s=Date.now();
-
   const say=txt=>{
     const left=Math.max(0,Math.ceil((SEARCH_MS-(Date.now()-t0s))/1000));
     E.searchTxt.innerHTML=txt+'<br><span style="opacity:.6">ещё '+left+' сек</span>';
   };
 
+  say('Открываю комнату '+CODE+'…');
+  try{ await openMyRoom(); }catch(e){ say('Нет связи с базой…'); }
+
   return await new Promise(res=>{
     let done=false, iv=0, busy=false;
-    const finish=v=>{
+    const finish=async v=>{
       if(done) return; done=true;
       clearInterval(iv);
-      try{ off(ref(db,path+'/joined')); }catch(e){}
-      if(!v) stopHeartbeat();
+      try{ off(ref(db,roomPath(CODE)+'/joined')); }catch(e){}
+      if(!v || v.me==='b') await closeMyRoom();     // свою комнату закрываем
       res(v);
     };
-    botNow=()=>{
-      if(NET&&NET.me==='a'){ stopHeartbeat(); remove(ref(db,path)).catch(()=>{}); }
-      NET=null; finish(null);
-    };
+    botNow=()=>{ NET=null; finish(null); };
 
-    /* создал комнату — жду гостя, подавая признак жизни */
-    const hostWait=()=>{
-      NET={rid:LOBBY,me:'a',foe:'b'};
-      startHeartbeat(path);
-      say('Комната открыта. Ждём соперника…');
-      const jr=ref(db,path+'/joined');
-      onValue(jr,snap=>{ if(snap.val()===true && !done){ off(jr); finish(NET); } });
-    };
+    // ко мне зашли
+    const jr=ref(db,roomPath(CODE)+'/joined');
+    onValue(jr,snap=>{
+      if(snap.val()===true && !done){
+        off(jr); NET={rid:CODE,me:'a',foe:'b'}; finish(NET);
+      }
+    });
 
-    const createRoom=async()=>{
-      await set(ref(db,path),{a:{uid:UID,reps:0,ready:false},
-                              b:{uid:null,reps:0,ready:false},
-                              go:false,joined:false,hb:'0'});
-      try{ onDisconnect(ref(db,path)).remove(); }catch(e){}
-      await new Promise(r=>setTimeout(r,600));          // вдруг заняли одновременно
-      let w=null; try{ w=(await get(ref(db,path))).val(); }catch(e){}
-      if(w&&w.a&&w.a.uid===UID){ clearInterval(iv); hostWait(); }
-    };
-
+    // сам захожу в комнаты с кодом меньше моего
     const step=async()=>{
       if(done||busy) return;
       busy=true;
       try{
-        let v=null;
-        try{ v=(await get(ref(db,path))).val(); }catch(e){ say('Нет связи с базой…'); return; }
-
-        if(!v){ say('Открываю комнату…'); await createRoom(); return; }
-        if(v.a&&v.a.uid===UID){ clearInterval(iv); hostWait(); return; }
-
-        // проверяю, живой ли хозяин: менялся ли признак жизни
-        say(v.joined===true ? 'Комната занята. Проверяю…' : 'Нашёл комнату. Проверяю…');
-        const hb1=v.hb;
-        await new Promise(r=>setTimeout(r,PROBE_MS));
-        if(done) return;
-        let v2=null; try{ v2=(await get(ref(db,path))).val(); }catch(e){ return; }
-        if(!v2){ say('Комната освободилась…'); return; }
-
-        if(v2.hb===hb1){                                 // хозяин мёртв — сношу
-          say('Комната брошена. Убираю…');
-          await remove(ref(db,path)).catch(()=>{});
+        let list={};
+        try{ list=(await get(ref(db,'open'))).val()||{}; }catch(e){ say('Нет связи с базой…'); return; }
+        const cands=Object.keys(list).filter(c=>c!==CODE && c<CODE).sort();
+        if(!cands.length){
+          const n=Object.keys(list).length;
+          say(n>1 ? 'В сети '+n+'. Ждём, пока зайдут ко мне…'
+                  : 'Комната '+CODE+' открыта. Ждём соперника…');
           return;
         }
-        if(v2.joined===true){ say('Комната занята другой парой. Ждём…'); return; }
-
-        await update(ref(db,path),{joined:true,'b/uid':UID});
-        NET={rid:LOBBY,me:'b',foe:'a'};
-        finish(NET);
+        for(const c of cands){
+          if(done) return;
+          if(await tryJoin(c,say)){ finish(NET); return; }
+        }
       } finally { busy=false; }
     };
-
     step();
-    iv=setInterval(step,900);
-    setTimeout(()=>{
-      if(done) return;
-      if(NET&&NET.me==='a'){ stopHeartbeat(); remove(ref(db,path)).catch(()=>{}); }
-      NET=null; finish(null);
-    },SEARCH_MS);
+    iv=setInterval(step,1000);
+    setTimeout(()=>{ if(!done){ NET=null; finish(null); } },SEARCH_MS);
   });
 }
+
+/* ── друг заходит по личному коду ── */
+async function hostGame(){
+  E.frPick.style.display='none'; E.frHostBox.style.display=''; E.frMsg.textContent='';
+  E.frCode.textContent=CODE;
+  try{
+    await openMyRoom();
+    const jr=ref(db,roomPath(CODE)+'/joined');
+    onValue(jr,snap=>{
+      if(snap.val()===true){
+        off(jr);
+        NET={rid:CODE,me:'a',foe:'b'};
+        OPP={name:'Друг',reps:0,bot:false};
+        MODE='duel'; E.fr.classList.remove('on'); begin();
+      }
+    });
+  }catch(e){ E.frCode.textContent='—'; }
+}
+
+async function joinGame(){
+  const code=(E.frInput.value||'').trim().toUpperCase();
+  if(code.length<5){ E.frMsg.textContent='Код из 5 символов'; return; }
+  if(code===CODE){ E.frMsg.textContent='Это ваш собственный код'; return; }
+  E.frMsg.textContent='Подключаюсь…';
+  const ok=await tryJoin(code,t=>{E.frMsg.textContent=t;});
+  if(ok){
+    OPP={name:'Друг',reps:0,bot:false};
+    MODE='duel'; E.fr.classList.remove('on'); begin();
+  }else{
+    E.frMsg.textContent='Не удалось. Друг должен нажать «Создать код» и ждать.';
+  }
+}
+
+function dropPeer(){ leaveNet(); }
 
 /* слушаем комнату: готовность, старт, счёт соперника */
 function watchRoom(onGo){
@@ -578,14 +643,13 @@ function markReady(){ update(ref(db,'rooms/'+NET.rid+'/'+NET.me),{ready:true}).c
 function pushReps(n){ if(NET) update(ref(db,'rooms/'+NET.rid+'/'+NET.me),{reps:n}).catch(()=>{}); }
 function leaveNet(){
   stopHeartbeat();
+  remove(ref(db,'open/'+CODE)).catch(()=>{});
+  remove(ref(db,roomPath(CODE))).catch(()=>{});
   try{ if(roomRef&&roomUnsub) off(roomRef); }catch(e){}
   roomRef=null;roomUnsub=null;NET=null;goneToDuel=false;
 }
 
 /* ── коды для друга: комната с именем-кодом ── */
-const ABC='ACEFHJKLMNPRTUVWXY3479';
-function makeCode(){let s='';for(let i=0;i<5;i++)s+=ABC[Math.floor(Math.random()*ABC.length)];return s;}
-
 async function hostGame(){
   E.frPick.style.display='none'; E.frHostBox.style.display=''; E.frMsg.textContent='';
   const code=makeCode();
@@ -761,6 +825,7 @@ function paintResult(news){
   });
 }
 loadPL(); paintPlayer();
+E.myCode.textContent=CODE;
 
 /* ── звук ── */
 let ac=null;
@@ -1114,7 +1179,6 @@ E.play.onclick=async()=>{
 E.searchBot.onclick=()=>{ if(botNow) botNow(); };
 E.searchCancel.onclick=()=>{
   searchCancelled=true;
-  if(NET&&NET.me==='a') remove(ref(db,'rooms/'+NET.rid)).catch(()=>{});
   leaveNet();
   E.search.classList.remove('on');E.start.classList.add('on');
 };

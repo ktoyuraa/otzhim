@@ -157,22 +157,54 @@ h2{font-family:'Oswald','Inter',sans-serif;font-size:clamp(28px,9vw,46px);letter
   text-transform:uppercase;color:var(--dim)}
 .gz b{font-family:'Oswald','Inter',sans-serif;font-weight:400;font-size:30px;
   line-height:1;color:var(--paper)}
-#missions{display:flex;flex-direction:column;gap:11px}
+#missions.grid5{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
+.tile{position:relative;aspect-ratio:1;background:var(--panel);
+  border:1px solid var(--line);border-radius:2px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  cursor:pointer;color:inherit;font-family:inherit;font-weight:400;
+  text-transform:none;letter-spacing:normal;padding:10px;
+  transition:border-color .15s,background .15s}
+.tile:hover{border-color:#3A4147}
+.tile:active{background:#1B1F23}
+.tile:focus-visible{outline:2px solid var(--paper);outline-offset:2px}
+.tile.done{background:var(--panel2)}
+.tile .pair{font-family:'Oswald','Inter',sans-serif;font-weight:400;
+  font-size:clamp(34px,10vw,46px);line-height:1;color:var(--paper);letter-spacing:.01em}
+.tile.done .pair{color:var(--red)}
+.tile .sub{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dim);text-align:center;line-height:1.5}
+.tile .flag{position:absolute;top:8px;right:9px;font-family:'IBM Plex Mono',monospace;
+  font-size:8px;letter-spacing:.14em;text-transform:uppercase;color:var(--red)}
+.tile .strip{position:absolute;left:0;right:0;bottom:0;height:2px;background:#22282D}
+.tile .strip i{display:block;height:100%;background:var(--alu)}
+.tile.done .strip i{background:var(--red)}
+#missions.grid5 .tile:nth-child(5){grid-column:1 / -1;aspect-ratio:auto;padding:22px 10px}
 .mhead{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.24em;
   text-transform:uppercase;color:var(--dim);padding-bottom:2px}
 .m{background:var(--panel);border:1px solid var(--line);border-radius:2px;
-  padding:13px 15px;display:flex;flex-direction:column;gap:9px}
-.m.done{border-color:#38414700;background:var(--panel2)}
+  padding:14px 16px;display:flex;flex-direction:column;gap:9px;
+  cursor:pointer;text-align:left;width:100%;color:inherit;
+  font-family:inherit;font-weight:400;font-size:inherit;
+  text-transform:none;letter-spacing:normal;
+  transition:border-color .15s,background .15s}
+.m:hover{border-color:#3A4147}
+.m:active{background:#1B1F23}
+.m:focus-visible{outline:2px solid var(--paper);outline-offset:2px}
+.m.done{background:var(--panel2);border-color:var(--line);cursor:default}
 .mtop{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .mt{font-size:13px;line-height:1.35;color:var(--paper)}
 .m.done .mt{color:var(--alu)}
 .mr{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.1em;
-  color:var(--alu);white-space:nowrap}
+  text-transform:uppercase;color:var(--alu);white-space:nowrap}
 .m.done .mr{color:var(--red)}
 .mbar{height:2px;background:#22282D;overflow:hidden}
 .mbar i{display:block;height:100%;background:var(--alu)}
 .m.done .mbar i{background:var(--red)}
-.mn{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;color:var(--dim)}
+.mgo{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--red);white-space:nowrap}
+.m.done .mgo{color:var(--alu)}
+.mn{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--dim)}
 #mres{display:flex;flex-direction:column;gap:9px}
 .mrow{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);
   display:flex;justify-content:space-between;gap:12px}
@@ -296,10 +328,9 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
     </div>
   </div>
 
-  <div id="missions"><div class="mhead">Миссии дня</div></div>
-
   <div class="menu">
     <button id="play">Играть</button>
+    <button id="missBtn">Миссии</button>
     <button id="friend">Играть с другом</button>
     <button id="solo">Тренировка без соперника</button>
   </div>
@@ -308,7 +339,7 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <div id="settings" class="settings">
     <label class="tg"><input type="checkbox" id="voice"> Считать вслух</label>
     <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
-    <p class="ver">версия 29 · дни подряд, без монет</p>
+    <p class="ver">версия 31 · миссии отдельным экраном</p>
   </div>
 </section>
 
@@ -317,6 +348,13 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <div class="spin"></div>
   <p class="wait" id="searchTxt">Подбираем по вашему уровню…</p>
   <div class="row"><button class="ghost" id="searchCancel">Отмена</button></div>
+</section>
+
+<section id="miss" class="sheet">
+  <h2>Миссии</h2>
+  <p class="lede">Успейте набрать цель до конца отсчёта. Дошли раньше — забег закрывается сразу.</p>
+  <div id="missions" class="grid5"></div>
+  <div class="row"><button class="ghost" id="missBack">Назад</button></div>
 </section>
 
 <section id="fr" class="sheet">
@@ -413,7 +451,7 @@ const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23
 const $=i=>document.getElementById(i), E={};
 ['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
  'bottom','stopb','stage','start','done','go','err','recal','voice','again','redo','home',
- 'dR','dS','dT','dB','dTotal','play','friend','solo','search','searchTxt','searchCancel','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','gear','settings','myCode','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plTotal','plXp','missions','mres'].forEach(k=>E[k]=$(k));
+ 'dR','dS','dT','dB','dTotal','play','friend','solo','search','searchTxt','searchCancel','miss','missBtn','missBack','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','gear','settings','myCode','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plTotal','plXp','missions','mres'].forEach(k=>E[k]=$(k));
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
@@ -508,14 +546,8 @@ function endDuel(){
   PL.xp+=xp; savePL();
   E.deReward.textContent='+'+xp+' опыта';
 
-  const news = me>0 ? applySet(me,S.deep,S.bad) : [];
+  applySet(me);
   E.mres2.innerHTML='';
-  news.forEach(n=>{
-    const r=document.createElement('div');
-    r.className='mrow ok';
-    r.innerHTML='<span>\u2713 '+n.t+'</span><span>+'+n.xp+' XP</span>';
-    E.mres2.appendChild(r);
-  });
   paintPlayer();
   E.duelend.classList.add('on');
 }
@@ -725,9 +757,66 @@ function leaveNet(){
 /* ── коды для друга: комната с именем-кодом ── */
 
 
+/* ── испытание на время ── */
+function startChallenge(c){
+  CH=c; MODE='chal'; OPP=null; chalOver=false;
+  leaveNet();
+  E.miss.classList.remove('on'); E.start.classList.remove('on');
+  begin();
+}
+
+function paintChal(left){
+  const mn=Math.floor(left/60), sc=Math.floor(left%60);
+  E.dClock.textContent=mn+':'+String(sc).padStart(2,'0');
+  E.dClock.classList.toggle('warn',left<=5);
+  E.dMe.textContent=S.reps||0;
+  E.dOpp.textContent=CH.reps;
+  E.dbarfill.style.width=Math.min(100,(S.reps||0)/CH.reps*100)+'%';
+}
+
+function chalTick(now){
+  const left=Math.max(0,(chalEnd-now)/1000);
+  paintChal(left);
+  if(chalOver) return;
+  if((S.reps||0)>=CH.reps) endChal(true);
+  else if(left<=0) endChal(false);
+}
+
+function startChal(){
+  E.hud.classList.remove('on');
+  E.dhud.classList.add('on');
+  E.dOppName.textContent='Цель';
+  chalOver=false;
+  paintChal(CH.secs);
+  countdown(()=>{ chalEnd=performance.now()+CH.secs*1000; });
+}
+
+function endChal(win){
+  chalOver=true; phase='idle'; hint('');
+  E.dhud.classList.remove('on'); E.gauge.classList.remove('on');
+  E.bottom.classList.remove('on'); E.simwrap.classList.remove('on');
+  tone(win?1200:220, win?420:400, win?'square':'sawtooth');
+
+  applySet(S.reps);
+  const first = !(PL.done[CH.id]&&PL.done[CH.id].win);
+  markChal(CH,S.reps,win);
+
+  E.deTitle.textContent = win ? 'Испытание пройдено' : 'Не успели';
+  E.deTitle.className='big '+(win?'win':'lose');
+  E.deMe.textContent=S.reps;
+  E.deOpp.textContent=CH.reps;
+  E.deReward.textContent = win
+    ? (first ? '+'+CH.xp+' опыта' : 'Опыт за это испытание уже получен')
+    : 'Нужно '+CH.reps+' за '+secLabel(CH.secs)+'. В этот раз '+S.reps+'.';
+  E.mres2.innerHTML='';
+  paintPlayer();
+  E.duelend.classList.add('on');
+}
+
 /* ── готовность после калибровки ── */
 let readyTimer=0;
 function afterCal(){
+  if(MODE==='chal'){ startChal(); return; }
   if(SIM&&MODE==='duel'&&!(OPP&&OPP.bot)){
     hint('Заглушка готова.<br><em>Ждём соперника.</em>');
     watchRoom(()=>{ clearTimeout(readyTimer); hint(''); E.simwrap.classList.add('on'); startDuel(); });
@@ -749,21 +838,22 @@ function afterCal(){
   },READY_WAIT);
 }
 
-/* ═══════════ ПРОФИЛЬ И МИССИИ ═══════════ */
-const POOL=[
-  {id:'reps', kind:'dayReps',  base:24, per:12, xp:40,
-   t:g=>'Сделать '+g+' отжиманий за день'},
-  {id:'set',  kind:'bestSet',  base:9,  per:4,  xp:50,
-   t:g=>g+' повторений в одном подходе'},
-  {id:'deep', kind:'dayDeep',  base:12, per:6,  xp:45,
-   t:g=>g+' глубоких повторений за день'},
-  {id:'sets', kind:'daySets',  base:2,  per:1,  xp:35,
-   t:g=>g+' подхода за день'},
-  {id:'cln',  kind:'cleanSet', base:7,  per:3,  xp:60,
-   t:g=>'Подход без ошибок: '+g+' повторений'}
+/* ═══════════ ПРОФИЛЬ И ИСПЫТАНИЯ ═══════════ */
+const CHAL=[
+  {id:'c10', reps:10, secs:10,  xp:40},
+  {id:'c20', reps:20, secs:20,  xp:60},
+  {id:'c30', reps:30, secs:30,  xp:90},
+  {id:'c40', reps:40, secs:40,  xp:130},
+  {id:'c50', reps:50, secs:90,  xp:180}
 ];
-const XP_LVL=120;                       // опыт на один уровень
+const XP_LVL=120;
+let CH=null, chalEnd=0, chalOver=false;
 
+function secLabel(n){
+  if(n%60===0 && n>=60) return (n/60)+' мин';
+  if(n>60) return Math.floor(n/60)+' мин '+(n%60)+' сек';
+  return n+' сек';
+}
 function today(){const d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function yesterday(){const d=new Date();d.setDate(d.getDate()-1);
@@ -772,114 +862,60 @@ function yesterday(){const d=new Date();d.setDate(d.getDate()-1);
 let PL=null;
 function loadPL(){
   try{PL=JSON.parse(localStorage.getItem('otzhim.player')||'null');}catch(e){PL=null;}
-  if(!PL) PL={xp:0,streak:0,lastDay:null,day:null,ms:[],
-              d:{reps:0,deep:0,sets:0,best:0},best:0,total:0};
-  if(typeof PL.total!=='number') PL.total=0;      // профиль от старой версии
+  if(!PL) PL={xp:0,streak:0,lastDay:null,total:0,best:0,done:{}};
+  if(typeof PL.total!=='number') PL.total=0;
   if(typeof PL.best !=='number') PL.best =0;
-  rollDay();
+  if(typeof PL.xp   !=='number') PL.xp   =0;
+  if(!PL.done || typeof PL.done!=='object') PL.done={};
 }
 function savePL(){try{localStorage.setItem('otzhim.player',JSON.stringify(PL))}catch(e){}}
 function level(){return Math.floor(PL.xp/XP_LVL)+1}
 function num(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'\u2009');}
 
-/* детерминированный выбор заданий по дате: у одного дня всегда одни и те же */
-function seedOf(str){let h=2166136261;
-  for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}
-  return h>>>0;}
-function rollDay(){
-  const d=today();
-  if(PL.day===d) return;
-  PL.day=d;
-  PL.d={reps:0,deep:0,sets:0,best:0};
-  let sd=seedOf(d), idx=POOL.map((_,i)=>i);
-  for(let i=idx.length-1;i>0;i--){                  // перемешивание по семени
-    sd=(sd*1103515245+12345)>>>0;
-    const j=sd%(i+1);[idx[i],idx[j]]=[idx[j],idx[i]];
-  }
-  const lv=level();
-  PL.ms=idx.slice(0,3).map(i=>{
-    const m=POOL[i];
-    return {id:m.id,goal:m.base+m.per*(lv-1),prog:0,done:false};
-  });
-  savePL();
-}
-
-function byId(id){return POOL.find(m=>m.id===id)}
-
-/* прогресс миссий после подхода */
-function applySet(reps,deep,bad){
-  rollDay();
-  PL.d.reps+=reps; PL.d.deep+=deep; PL.d.sets+=1;
-  PL.d.best=Math.max(PL.d.best,reps);
+/* итог любого подхода: общий счёт и серия дней */
+function applySet(reps){
+  if(reps<=0) return;
   PL.total+=reps; PL.best=Math.max(PL.best,reps);
-
   const day=today();
   if(PL.lastDay!==day){
     PL.streak = PL.lastDay===yesterday() ? PL.streak+1 : 1;
     PL.lastDay=day;
   }
-
-  const news=[];
-  PL.ms.forEach(x=>{
-    const m=byId(x.id); if(!m) return;
-    let v=x.prog;
-    if(m.kind==='dayReps')  v=PL.d.reps;
-    if(m.kind==='dayDeep')  v=PL.d.deep;
-    if(m.kind==='daySets')  v=PL.d.sets;
-    if(m.kind==='bestSet')  v=Math.max(x.prog,reps);
-    if(m.kind==='cleanSet') v=Math.max(x.prog, bad===0?reps:0);
-    x.prog=v;
-    if(!x.done && v>=x.goal){
-      x.done=true; PL.xp+=m.xp;
-      news.push({t:m.t(x.goal),xp:m.xp});
-    }
-  });
   savePL();
-  return news;
 }
 
-/* отрисовка */
 function paintPlayer(){
   E.plLvl.textContent=level();
   E.plStrk.textContent=PL.streak;
   E.plTotal.textContent=num(PL.total);
   E.plXp.style.strokeDasharray=((PL.xp%XP_LVL)/XP_LVL*100).toFixed(1)+' 100';
 
-  E.missions.innerHTML='<div class="mhead">Миссии дня</div>';
-  PL.ms.forEach(x=>{
-    const m=byId(x.id); if(!m) return;
-    const p=Math.min(1,x.prog/x.goal);
-    const d=document.createElement('div');
-    d.className='m'+(x.done?' done':'');
-    d.innerHTML='<div class="mtop"><div class="mt">'+m.t(x.goal)+'</div>'+
-      '<div class="mr">'+(x.done?'\u2713 получено':'+'+m.xp+' xp')+'</div></div>'+
-      '<div class="mbar"><i style="width:'+(p*100)+'%"></i></div>'+
-      '<div class="mn">'+Math.min(x.prog,x.goal)+' из '+x.goal+'</div>';
-    E.missions.appendChild(d);
+  E.missions.innerHTML='';
+  CHAL.forEach(c=>{
+    const rec=PL.done[c.id]||{};
+    const done=!!rec.win, best=rec.best||0;
+    const b=document.createElement('button');
+    b.className='tile'+(done?' done':'');
+    b.type='button';
+    b.innerHTML=
+      (done?'<div class="flag">пройдено</div>':'')+
+      '<div class="pair">'+c.reps+'</div>'+
+      '<div class="sub">за '+secLabel(c.secs)+'</div>'+
+      '<div class="sub" style="opacity:.65">'+(done?'рекорд '+best:(best?best+' из '+c.reps:'не пройдено'))+'</div>'+
+      '<div class="strip"><i style="width:'+(done?100:Math.min(100,best/c.reps*100))+'%"></i></div>';
+    b.onclick=()=>startChallenge(c);
+    E.missions.appendChild(b);
   });
 }
-function paintResult(news){
-  E.mres.innerHTML='';
-  if(!news.length) return;
-  news.forEach(n=>{
-    const r=document.createElement('div');
-    r.className='mrow ok';
-    r.innerHTML='<span>\u2713 '+n.t+'</span><span>+'+n.xp+' XP</span>';
-    E.mres.appendChild(r);
-  });
-}
-loadPL(); paintPlayer();
-E.myCode.textContent=CODE;
-E.gear.onclick=()=>E.settings.classList.toggle('on');
 
-if(!FB_OK){
-  const bar=document.createElement('div');
-  bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99;background:#E0451B;color:#fff;'+
-    'font:600 12px/1.5 "IBM Plex Mono",monospace;padding:10px 14px;text-align:center';
-  bar.textContent='Сеть недоступна: '+FB_ERR+'. Игра с соперником не работает, тренировка — да.';
-  document.body.appendChild(bar);
-  E.play.textContent='Играть с ботом';
-  E.friend.disabled=true; E.friend.style.opacity='.4';
+function markChal(c,reps,win){
+  const cur=PL.done[c.id]||{best:0,win:false};
+  const best=Math.max(cur.best||0,reps);
+  if(win && !cur.win){ PL.xp+=c.xp; }
+  PL.done[c.id]={best,win:cur.win||win};
+  if(!win && !cur.win) delete PL.done[c.id].win;
+  if(!win && !cur.win && best===0) delete PL.done[c.id];
+  savePL();
 }
 
 /* ── звук ── */
@@ -1101,7 +1137,8 @@ function loop(){
   }
   if(!E.hint.textContent.startsWith('не засчитано')) hint('');
 
-  if(MODE==='duel'){ duelTick(now); if(ended) return; }
+  if(MODE==='chal'){ chalTick(now); if(chalOver) return; }
+  else if(MODE==='duel'){ duelTick(now); if(ended) return; }
   else{
     const sec=Math.floor((now-t0)/1000);
     E.clock.textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
@@ -1186,8 +1223,9 @@ function finish(){
   E.hud.classList.remove('on');E.gauge.classList.remove('on');E.bottom.classList.remove('on');
   E.dR.textContent=S.reps;E.dS.textContent=S.score;E.dB.textContent=S.bad;
   E.dT.textContent=E.clock.textContent;
-  const news = S.reps>0 ? applySet(S.reps,S.deep,S.bad) : [];
-  paintResult(news); paintPlayer();
+  applySet(S.reps);
+  E.mres.innerHTML='';
+  paintPlayer();
   E.dTotal.textContent=num(PL.total);
   E.done.classList.add('on');
 }
@@ -1198,14 +1236,14 @@ function stopAll(){
   if(lock){lock.release().catch(()=>{});lock=null;}
   E.hud.classList.remove('on');E.gauge.classList.remove('on');
   E.bottom.classList.remove('on');E.bar.classList.remove('on');
-  E.done.classList.remove('on');E.duelend.classList.remove('on');
+  E.done.classList.remove('on');E.duelend.classList.remove('on');E.miss.classList.remove('on');
   E.simwrap.classList.remove('on');E.dhud.classList.remove('on');E.search.classList.remove('on');E.fr.classList.remove('on');
   MODE='solo';OPP=null;dropPeer();
   E.start.classList.add('on');
 }
 
 
-E.stopb.onclick=()=>{ MODE==='duel' ? endDuel() : finish(); };
+E.stopb.onclick=()=>{ MODE==='chal' ? endChal(false) : MODE==='duel' ? endDuel() : finish(); };
 E.home.onclick=stopAll;
 
 /* меню */
@@ -1216,6 +1254,8 @@ E.simbtn.onclick=()=>{
   E.reps.textContent=S.reps;
   tone(840,70);
 };
+E.missBtn.onclick=()=>{E.start.classList.remove('on');E.miss.classList.add('on');};
+E.missBack.onclick=()=>{E.miss.classList.remove('on');E.start.classList.add('on');};
 E.solo.onclick=()=>{MODE='solo';OPP=null;dropPeer();begin();};
 let searchCancelled=false;
 E.play.onclick=async()=>{
@@ -1250,10 +1290,15 @@ E.frGo.onclick=joinGame;
 E.frBack.onclick=()=>{dropPeer();E.fr.classList.remove('on');E.start.classList.add('on');};
 
 E.deAgain.onclick=()=>{
+  if(MODE==='chal'){ E.duelend.classList.remove('on'); flow(true); return; }
   if(OPP&&OPP.bot&&!NET){OPP=makeBot();flow(true);}
   else{leaveNet();stopAll();}
 };
-E.deHome.onclick=()=>{dropPeer();stopAll();};
+E.deHome.onclick=()=>{
+  const wasChal = MODE==='chal';
+  dropPeer(); stopAll();
+  if(wasChal){ E.start.classList.remove('on'); E.miss.classList.add('on'); }
+};
 E.again.onclick=()=>flow(true);
 E.redo.onclick=()=>flow(false);
 E.recal.onclick=()=>{C=null;try{localStorage.removeItem('otzhim6')}catch(e){}showRecal();};

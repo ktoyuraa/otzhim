@@ -439,7 +439,6 @@ async function claim(uid,rid){
   const res=await runTransaction(r,cur=>{
     if(!cur) return;                       // уже забрали
     if(cur.rid) return;                    // тоже уже забрали
-    if(Date.now()-(cur.t||0)>STALE) return;// протух
     cur.rid=rid; return cur;
   });
   return res.committed && !!res.snapshot.val();
@@ -451,7 +450,7 @@ async function findMatch(){
 
   // встаём в очередь сразу — иначе при одновременном старте оба видят пусто
   queueRef=ref(db,'queue/'+UID);
-  await set(queueRef,{t:Date.now(),lvl:myLvl()});
+  await set(queueRef,{t:serverTimestamp(),lvl:myLvl()});
   try{ onDisconnect(queueRef).remove(); }catch(e){}
 
   return await new Promise(res=>{
@@ -471,16 +470,19 @@ async function findMatch(){
     });
 
     // 2) сам продолжаю осматриваться
+    let myTurn=false;
     const scan=async()=>{
       if(done) return;
       let list={};
       try{ list=(await get(ref(db,'queue'))).val()||{}; }catch(e){ return; }
       const n=Object.keys(list).length;
-      E.searchTxt.textContent = n>1 ? 'В очереди сейчас '+n+' — связываем…'
-                                    : 'Ждём соперника…';
+      E.searchTxt.textContent = n>1
+        ? 'В очереди '+n+'. '+(myTurn?'Связываю…':'Ждём, пока к нам подключатся…')
+        : 'Ждём соперника…';
       // инициативу берёт тот, чей идентификатор меньше: так не заберём друг друга
+      myTurn=Object.keys(list).some(u=>u!==UID && UID<u);
       const cands=Object.entries(list)
-        .filter(([u,v])=>u!==UID && v && !v.rid && UID<u && Date.now()-(v.t||0)<STALE)
+        .filter(([u,v])=>u!==UID && v && !v.rid && UID<u)
         .sort((a,b)=>(a[1].t||0)-(b[1].t||0));
       for(const [u] of cands){
         if(done) return;
@@ -503,6 +505,10 @@ function watchRoom(onGo){
     const foe=v[NET.foe]||{};
     if(OPP) OPP.reps=foe.reps||0;
     if(v.go && !goneToDuel){ goneToDuel=true; onGo(); }
+    if(!v.go && phase!=='counting'){
+      hint(foe.ready ? 'Соперник готов. Начинаем…'
+                     : 'Вы готовы.<br><em>Ждём, пока соперник пройдёт калибровку.</em>');
+    }
     // сторона «a» даёт старт, когда оба готовы
     if(NET.me==='a' && !v.go && (v.a||{}).ready && (v.b||{}).ready){
       update(roomRef,{go:true,at:serverTimestamp()}).catch(()=>{});
@@ -560,7 +566,7 @@ let readyTimer=0;
 function afterCal(){
   if(MODE==='solo'){ countdown(); return; }
   if(OPP&&OPP.bot){ startDuel(); return; }
-  hint('Ждём соперника…');
+  hint('Вы готовы.<br><em>Ждём соперника.</em>');
   watchRoom(()=>{ clearTimeout(readyTimer); hint(''); startDuel(); });
   markReady();
   clearTimeout(readyTimer);
@@ -1016,7 +1022,7 @@ E.play.onclick=async()=>{
   clearTimeout(t1);
   if(searchCancelled){ leaveNet(); return; }
   E.search.classList.remove('on');
-  if(m){ OPP={name:'Соперник',reps:0,bot:false}; }
+  if(m){ OPP={name:'Соперник',reps:0,bot:false}; tone(900,140); }
   else { leaveNet(); OPP=makeBot(); }
   begin();
 };

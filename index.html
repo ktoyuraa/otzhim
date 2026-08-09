@@ -128,6 +128,10 @@ h2{font-family:'Oswald','Inter',sans-serif;font-size:clamp(28px,9vw,46px);letter
 .st b{display:block;font-family:'Oswald','Inter',sans-serif;font-size:40px;
   color:var(--paper);letter-spacing:-.02em;margin-top:4px}
 .st.w b{color:var(--lo)}
+.totline{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;
+  color:var(--dim)}
+.totline b{font-family:'Oswald','Inter',sans-serif;font-weight:500;font-size:19px;
+  color:var(--paper);letter-spacing:.04em}
 /* игрок и миссии */
 #player{display:flex;flex-direction:column;gap:9px}
 .cluster{display:flex;align-items:center;gap:26px}
@@ -146,7 +150,7 @@ h2{font-family:'Oswald','Inter',sans-serif;font-size:clamp(28px,9vw,46px);letter
   line-height:.9;color:var(--paper)}
 .dcore span{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.22em;
   text-transform:uppercase;color:var(--dim)}
-.gauges{display:flex;flex-direction:column;gap:16px;flex:1}
+.gauges{display:flex;flex-direction:column;gap:13px;flex:1;min-width:0}
 .gz{display:flex;flex-direction:column;gap:2px;
   border-left:1px solid var(--line);padding-left:14px}
 .gz span{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.22em;
@@ -286,8 +290,8 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
         <div class="dcore"><b id="plLvl">1</b><span>уровень</span></div>
       </div>
       <div class="gauges">
-        <div class="gz"><span>Серия</span><b id="plStrk">0</b></div>
-        <div class="gz"><span>Монеты</span><b id="plCoin">0</b></div>
+        <div class="gz"><span>Дней подряд</span><b id="plStrk">0</b></div>
+        <div class="gz"><span>Всего отжиманий</span><b id="plTotal">0</b></div>
       </div>
     </div>
   </div>
@@ -304,7 +308,7 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <div id="settings" class="settings">
     <label class="tg"><input type="checkbox" id="voice"> Считать вслух</label>
     <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
-    <p class="ver">версия 27 · приборная панель</p>
+    <p class="ver">версия 29 · дни подряд, без монет</p>
   </div>
 </section>
 
@@ -359,6 +363,7 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
     <div class="st">Время<b id="dT">0:00</b></div>
     <div class="st w">Отклонено<b id="dB">0</b></div>
   </div>
+  <p class="totline">Всего отжиманий за всё время: <b id="dTotal">0</b></p>
   <div id="mres"></div>
   <div class="row">
     <button id="again">Ещё подход</button>
@@ -408,7 +413,7 @@ const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23
 const $=i=>document.getElementById(i), E={};
 ['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
  'bottom','stopb','stage','start','done','go','err','recal','voice','again','redo','home',
- 'dR','dS','dT','dB','play','friend','solo','search','searchTxt','searchCancel','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','gear','settings','myCode','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
+ 'dR','dS','dT','dB','dTotal','play','friend','solo','search','searchTxt','searchCancel','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','gear','settings','myCode','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plTotal','plXp','missions','mres'].forEach(k=>E[k]=$(k));
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
@@ -499,16 +504,16 @@ function endDuel(){
   E.deTitle.className='big '+(tie?'tie':(win?'win':'lose'));
   E.deMe.textContent=me; E.deOpp.textContent=op;
 
-  const xp = win?70:(tie?40:20), coin = win?30:(tie?15:6);
-  PL.xp+=xp; PL.coins+=coin; savePL();
-  E.deReward.textContent='+'+xp+' опыта · +'+coin+' монет';
+  const xp = win?70:(tie?40:20);
+  PL.xp+=xp; savePL();
+  E.deReward.textContent='+'+xp+' опыта';
 
   const news = me>0 ? applySet(me,S.deep,S.bad) : [];
   E.mres2.innerHTML='';
   news.forEach(n=>{
     const r=document.createElement('div');
     r.className='mrow ok';
-    r.innerHTML='<span>\u2713 '+n.t+'</span><span>+'+n.xp+' xp \u00b7 +'+n.coin+'</span>';
+    r.innerHTML='<span>\u2713 '+n.t+'</span><span>+'+n.xp+' XP</span>';
     E.mres2.appendChild(r);
   });
   paintPlayer();
@@ -746,15 +751,15 @@ function afterCal(){
 
 /* ═══════════ ПРОФИЛЬ И МИССИИ ═══════════ */
 const POOL=[
-  {id:'reps', kind:'dayReps',  base:24, per:12, xp:40, coin:15,
+  {id:'reps', kind:'dayReps',  base:24, per:12, xp:40,
    t:g=>'Сделать '+g+' отжиманий за день'},
-  {id:'set',  kind:'bestSet',  base:9,  per:4,  xp:50, coin:20,
+  {id:'set',  kind:'bestSet',  base:9,  per:4,  xp:50,
    t:g=>g+' повторений в одном подходе'},
-  {id:'deep', kind:'dayDeep',  base:12, per:6,  xp:45, coin:18,
+  {id:'deep', kind:'dayDeep',  base:12, per:6,  xp:45,
    t:g=>g+' глубоких повторений за день'},
-  {id:'sets', kind:'daySets',  base:2,  per:1,  xp:35, coin:12,
+  {id:'sets', kind:'daySets',  base:2,  per:1,  xp:35,
    t:g=>g+' подхода за день'},
-  {id:'cln',  kind:'cleanSet', base:7,  per:3,  xp:60, coin:25,
+  {id:'cln',  kind:'cleanSet', base:7,  per:3,  xp:60,
    t:g=>'Подход без ошибок: '+g+' повторений'}
 ];
 const XP_LVL=120;                       // опыт на один уровень
@@ -767,12 +772,15 @@ function yesterday(){const d=new Date();d.setDate(d.getDate()-1);
 let PL=null;
 function loadPL(){
   try{PL=JSON.parse(localStorage.getItem('otzhim.player')||'null');}catch(e){PL=null;}
-  if(!PL) PL={xp:0,coins:0,streak:0,lastDay:null,day:null,ms:[],
+  if(!PL) PL={xp:0,streak:0,lastDay:null,day:null,ms:[],
               d:{reps:0,deep:0,sets:0,best:0},best:0,total:0};
+  if(typeof PL.total!=='number') PL.total=0;      // профиль от старой версии
+  if(typeof PL.best !=='number') PL.best =0;
   rollDay();
 }
 function savePL(){try{localStorage.setItem('otzhim.player',JSON.stringify(PL))}catch(e){}}
 function level(){return Math.floor(PL.xp/XP_LVL)+1}
+function num(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'\u2009');}
 
 /* детерминированный выбор заданий по дате: у одного дня всегда одни и те же */
 function seedOf(str){let h=2166136261;
@@ -822,8 +830,8 @@ function applySet(reps,deep,bad){
     if(m.kind==='cleanSet') v=Math.max(x.prog, bad===0?reps:0);
     x.prog=v;
     if(!x.done && v>=x.goal){
-      x.done=true; PL.xp+=m.xp; PL.coins+=m.coin;
-      news.push({t:m.t(x.goal),xp:m.xp,coin:m.coin});
+      x.done=true; PL.xp+=m.xp;
+      news.push({t:m.t(x.goal),xp:m.xp});
     }
   });
   savePL();
@@ -834,7 +842,7 @@ function applySet(reps,deep,bad){
 function paintPlayer(){
   E.plLvl.textContent=level();
   E.plStrk.textContent=PL.streak;
-  E.plCoin.textContent=PL.coins;
+  E.plTotal.textContent=num(PL.total);
   E.plXp.style.strokeDasharray=((PL.xp%XP_LVL)/XP_LVL*100).toFixed(1)+' 100';
 
   E.missions.innerHTML='<div class="mhead">Миссии дня</div>';
@@ -856,7 +864,7 @@ function paintResult(news){
   news.forEach(n=>{
     const r=document.createElement('div');
     r.className='mrow ok';
-    r.innerHTML='<span>\u2713 '+n.t+'</span><span>+'+n.xp+' xp \u00b7 +'+n.coin+'</span>';
+    r.innerHTML='<span>\u2713 '+n.t+'</span><span>+'+n.xp+' XP</span>';
     E.mres.appendChild(r);
   });
 }
@@ -1180,6 +1188,7 @@ function finish(){
   E.dT.textContent=E.clock.textContent;
   const news = S.reps>0 ? applySet(S.reps,S.deep,S.bad) : [];
   paintResult(news); paintPlayer();
+  E.dTotal.textContent=num(PL.total);
   E.done.classList.add('on');
 }
 function stopAll(){

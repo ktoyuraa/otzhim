@@ -130,7 +130,47 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
 .mrow{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);
   display:flex;justify-content:space-between;gap:12px}
 .mrow.ok{color:var(--hi)}
-@media (prefers-reduced-motion:reduce){#ball{transition:none}}
+/* дуэльный HUD */
+#dhud{position:absolute;top:0;left:0;right:0;z-index:6;display:none;
+  padding:calc(env(safe-area-inset-top) + 12px) 14px 12px;
+  background:linear-gradient(180deg,rgba(0,0,0,.8),rgba(0,0,0,0))}
+#dhud.on{display:block}
+.drow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dside{display:flex;flex-direction:column;min-width:74px}
+.dside .nm{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dside .n{font-family:'Archivo Black',sans-serif;font-size:42px;line-height:1;letter-spacing:-.03em;
+  text-shadow:0 2px 12px rgba(0,0,0,.9)}
+.dside.me .n{color:var(--hi)}
+.dside.op{align-items:flex-end;text-align:right}
+.dside.op .n{color:var(--lo)}
+.dclock{font-family:'Archivo Black',sans-serif;font-size:30px;letter-spacing:-.02em;
+  text-shadow:0 2px 12px rgba(0,0,0,.9)}
+.dclock.warn{color:var(--lo)}
+#dbar{margin-top:9px;height:7px;border-radius:4px;overflow:hidden;background:var(--lo);
+  box-shadow:0 2px 10px rgba(0,0,0,.5)}
+#dbar i{display:block;height:100%;background:var(--hi);width:50%;transition:width .25s}
+
+/* меню и коды */
+.menu{display:flex;flex-direction:column;gap:10px}
+#play{background:var(--hi);color:#04160B;font-size:15px;padding:19px 34px;width:100%}
+#friend{background:#1B242B;color:var(--paper);border:1px solid #2A3740;font-size:13px;padding:16px 30px;width:100%}
+#solo{background:none;color:var(--dim);border:1px solid #232B31;font-size:12px;padding:14px 28px;width:100%}
+.code{font-family:'Archivo Black',sans-serif;font-size:clamp(38px,14vw,66px);
+  letter-spacing:.16em;color:var(--hi);text-align:center;margin:6px 0}
+input[type=text]{background:#121820;border:1px solid #2A3740;color:var(--paper);
+  font-family:'Archivo Black',sans-serif;font-size:30px;letter-spacing:.14em;text-align:center;
+  padding:16px 10px;width:100%;border-radius:12px;text-transform:uppercase}
+input[type=text]:focus{outline:none;border-color:var(--hi)}
+.wait{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--dim);text-align:center;line-height:1.6}
+.spin{width:44px;height:44px;border:3px solid #223038;border-top-color:var(--hi);
+  border-radius:50%;margin:10px auto;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.big{font-family:'Archivo Black',sans-serif;font-size:clamp(40px,13vw,68px);letter-spacing:-.03em;line-height:1}
+.big.win{color:var(--hi)} .big.lose{color:var(--lo)} .big.tie{color:var(--gold)}
+.vs{display:flex;align-items:baseline;gap:14px;font-family:'Archivo Black',sans-serif;font-size:52px}
+.vs .a{color:var(--hi)} .vs .b{color:var(--lo)} .vs .d{color:var(--dim);font-size:26px}
+@media (prefers-reduced-motion:reduce){#ball{transition:none}.spin{animation:none}}
 </style>
 </head>
 <body>
@@ -146,6 +186,15 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
     <div class="hudcell">Повторений<b id="reps" class="big">0</b></div>
     <div class="hudcell">Время<b id="clock">0:00</b></div>
     <div class="hudcell r">Очки<b id="score">0</b></div>
+  </div>
+
+  <div id="dhud">
+    <div class="drow">
+      <div class="dside me"><div class="nm">Вы</div><div class="n" id="dMe">0</div></div>
+      <div class="dclock" id="dClock">1:00</div>
+      <div class="dside op"><div class="nm" id="dOppName">Соперник</div><div class="n" id="dOpp">0</div></div>
+    </div>
+    <div id="dbar"><i id="dbarfill"></i></div>
   </div>
 
   <div id="hint"></div>
@@ -173,13 +222,59 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
 
   <div id="missions"><div class="mhead">Миссии дня</div></div>
 
+  <div class="menu">
+    <button id="play">Играть</button>
+    <button id="friend">Играть с другом</button>
+    <button id="solo">Тренировка без соперника</button>
+  </div>
   <div class="row">
-    <button id="go">Начать</button>
     <label class="tg"><input type="checkbox" id="voice"> Голосом</label>
   </div>
   <div class="row"><button class="ghost" id="recal" style="display:none">Сбросить калибровку</button></div>
   <p id="err" class="err"></p>
   <p class="ver">версия 11 · проверка сгиба локтя</p>
+</section>
+
+<section id="search" class="sheet">
+  <h2>Ищем соперника</h2>
+  <div class="spin"></div>
+  <p class="wait" id="searchTxt">Подбираем по вашему уровню…</p>
+  <div class="row"><button class="ghost" id="searchCancel">Отмена</button></div>
+</section>
+
+<section id="fr" class="sheet">
+  <h2>Игра с другом</h2>
+  <div class="menu" id="frPick">
+    <button id="frHost">Создать код</button>
+    <button id="frJoin">Ввести код</button>
+  </div>
+
+  <div id="frHostBox" style="display:none">
+    <p class="wait">Продиктуйте другу этот код</p>
+    <div class="code" id="frCode">—</div>
+    <div class="spin"></div>
+    <p class="wait">Ждём подключения…</p>
+  </div>
+
+  <div id="frJoinBox" style="display:none">
+    <p class="wait">Введите код друга</p>
+    <input type="text" id="frInput" maxlength="5" autocomplete="off" placeholder="XXXXX">
+    <div class="row" style="margin-top:12px"><button id="frGo">Подключиться</button></div>
+    <p class="wait" id="frMsg"></p>
+  </div>
+
+  <div class="row"><button class="ghost" id="frBack">Назад</button></div>
+</section>
+
+<section id="duelend" class="sheet">
+  <div class="big" id="deTitle">Победа</div>
+  <div class="vs"><span class="a" id="deMe">0</span><span class="d">против</span><span class="b" id="deOpp">0</span></div>
+  <div id="deReward" class="wait" style="text-align:left"></div>
+  <div id="mres2"></div>
+  <div class="row">
+    <button id="deAgain">Ещё бой</button>
+    <button class="ghost" id="deHome">В меню</button>
+  </div>
 </section>
 
 <section id="done" class="sheet">
@@ -212,11 +307,11 @@ const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23
 const $=i=>document.getElementById(i), E={};
 ['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
  'bottom','stopb','stage','start','done','go','err','recal','voice','again','redo','home',
- 'dR','dS','dT','dB','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
+ 'dR','dS','dT','dB','play','friend','solo','search','searchTxt','searchCancel','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
-let phase='idle', lastT=-1, hold=0, t0=0, C=null, S={}, lastGood=0;
+let phase='idle', lastT=-1, hold=0, t0=0, C=null, S={}, lastGood=0, searchTimer=0;
 
 /* ── калибровка ── */
 try{const r=localStorage.getItem('otzhim6');if(r)C=JSON.parse(r);}catch(e){}
@@ -229,6 +324,168 @@ function resetSet(){
 }
 resetSet();
 
+
+
+/* ═══════════ ДУЭЛЬ ═══════════ */
+const DUR=60;                      // длительность боя, секунд
+let MODE='solo';                   // solo | duel
+let OPP=null, conn=null, peer=null, isHost=false;
+let duelEnd=0, botTimes=[], botI=0, myReady=false, oppReady=false, ended=false;
+
+/* ── бот: темп живого человека, а не метронома ── */
+function makeBot(){
+  const lv=level();
+  const target=Math.max(8, Math.round(11+lv*2.2+(Math.random()*10-4)));
+  const K=35, F=1-Math.exp(-DUR/K);
+  const t=[];
+  for(let i=1;i<=target;i++){
+    const base=-K*Math.log(1-(i/target)*F);          // спереди густо, к концу редко
+    t.push(Math.min(DUR-0.4, base+(Math.random()*1.2-0.6)));
+  }
+  t.sort((a,b)=>a-b);
+  const names=['Соперник','Аноним','Незнакомец','Гость'];
+  return {name:names[Math.floor(Math.random()*names.length)],
+          reps:0, bot:true, times:t};
+}
+
+function paintDuel(left){
+  const mn=Math.floor(left/60), sc=Math.floor(left%60);
+  E.dClock.textContent=mn+':'+String(sc).padStart(2,'0');
+  E.dClock.classList.toggle('warn',left<=10);
+  E.dMe.textContent=S.reps||0;
+  E.dOpp.textContent=OPP?OPP.reps:0;
+  const a=S.reps||0, b=OPP?OPP.reps:0, tot=a+b;
+  E.dbarfill.style.width=(tot?a/tot*100:50)+'%';
+}
+
+function send(o){ try{ if(conn&&conn.open) conn.send(o); }catch(e){} }
+
+function startDuel(){
+  ended=false; botI=0;
+  E.hud.classList.remove('on');
+  E.dhud.classList.add('on');
+  E.dOppName.textContent=OPP?OPP.name:'Соперник';
+  paintDuel(DUR);
+  countdown(()=>{ duelEnd=performance.now()+DUR*1000; });
+}
+
+function duelTick(now){
+  const left=Math.max(0,(duelEnd-now)/1000);
+  if(OPP&&OPP.bot){
+    const passed=DUR-left;
+    while(botI<OPP.times.length && OPP.times[botI]<=passed){ botI++; OPP.reps=botI; }
+  }
+  paintDuel(left);
+  if(left<=0 && !ended) endDuel();
+}
+
+function endDuel(){
+  ended=true; phase='idle'; hint('');
+  E.dhud.classList.remove('on'); E.gauge.classList.remove('on'); E.bottom.classList.remove('on');
+  send({t:'end',n:S.reps});
+  tone(300,400,'sine');
+
+  const me=S.reps, op=OPP?OPP.reps:0;
+  const win=me>op, tie=me===op;
+  E.deTitle.textContent = tie?'Ничья':(win?'Победа':'Поражение');
+  E.deTitle.className='big '+(tie?'tie':(win?'win':'lose'));
+  E.deMe.textContent=me; E.deOpp.textContent=op;
+
+  const xp = win?70:(tie?40:20), coin = win?30:(tie?15:6);
+  PL.xp+=xp; PL.coins+=coin; savePL();
+  E.deReward.textContent='+'+xp+' опыта · +'+coin+' монет';
+
+  const news = me>0 ? applySet(me,S.deep,S.bad) : [];
+  E.mres2.innerHTML='';
+  news.forEach(n=>{
+    const r=document.createElement('div');
+    r.className='mrow ok';
+    r.innerHTML='<span>\u2713 '+n.t+'</span><span>+'+n.xp+' xp \u00b7 +'+n.coin+'</span>';
+    E.mres2.appendChild(r);
+  });
+  paintPlayer();
+  E.duelend.classList.add('on');
+}
+
+/* ── связь между телефонами ── */
+async function loadPeer(){
+  if(window.Peer) return;
+  await new Promise((res,rej)=>{
+    const sc=document.createElement('script');
+    sc.src='https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js';
+    sc.onload=res; sc.onerror=()=>rej(new Error('нет связи с сервером кодов'));
+    document.head.appendChild(sc);
+  });
+}
+const ABC='ACEFHJKLMNPRTUVWXY3479';
+function makeCode(){let s='';for(let i=0;i<5;i++)s+=ABC[Math.floor(Math.random()*ABC.length)];return s;}
+
+function wire(c){
+  conn=c;
+  c.on('data',d=>{
+    if(!d||!d.t)return;
+    if(d.t==='ready'){ oppReady=true; tryGo(); }
+    if(d.t==='go'){ OPP=OPP||{name:'Соперник',reps:0,bot:false}; startDuel(); }
+    if(d.t==='rep'){ if(OPP)OPP.reps=d.n; }
+    if(d.t==='end'){ if(OPP)OPP.reps=Math.max(OPP.reps,d.n); }
+  });
+  c.on('close',()=>{ if(phase==='counting'&&MODE==='duel'&&!ended) endDuel(); });
+}
+function tryGo(){
+  if(isHost&&myReady&&oppReady){ send({t:'go'}); startDuel(); }
+}
+
+async function hostGame(){
+  E.frPick.style.display='none'; E.frHostBox.style.display='';
+  try{
+    await loadPeer();
+    const code=makeCode();
+    E.frCode.textContent=code;
+    peer=new Peer('otzhim-'+code,{debug:0});
+    isHost=true;
+    peer.on('connection',c=>{ wire(c); c.on('open',()=>{
+      OPP={name:'Друг',reps:0,bot:false};
+      MODE='duel'; E.fr.classList.remove('on'); begin();
+    });});
+    peer.on('error',e=>{ E.frCode.textContent='—'; E.frMsg.textContent='Ошибка: '+e.type; });
+  }catch(e){ E.frCode.textContent='—'; }
+}
+
+async function joinGame(){
+  const code=(E.frInput.value||'').trim().toUpperCase();
+  if(code.length<5){ E.frMsg.textContent='Код из 5 символов'; return; }
+  E.frMsg.textContent='Подключаюсь…';
+  try{
+    await loadPeer();
+    peer=new Peer({debug:0});
+    isHost=false;
+    peer.on('open',()=>{
+      const c=peer.connect('otzhim-'+code,{reliable:true});
+      wire(c);
+      c.on('open',()=>{
+        OPP={name:'Друг',reps:0,bot:false};
+        MODE='duel'; E.fr.classList.remove('on'); begin();
+      });
+      setTimeout(()=>{ if(!c.open) E.frMsg.textContent='Не отвечает. Проверьте код.'; },9000);
+    });
+    peer.on('error',e=>{ E.frMsg.textContent='Не удалось подключиться'; });
+  }catch(e){ E.frMsg.textContent='Нет связи с сервером кодов'; }
+}
+
+function dropPeer(){
+  try{conn&&conn.close()}catch(e){}
+  try{peer&&peer.destroy()}catch(e){}
+  conn=null;peer=null;myReady=false;oppReady=false;
+}
+
+/* ── готовность после калибровки ── */
+function afterCal(){
+  if(MODE==='solo'){ countdown(); return; }
+  if(OPP&&OPP.bot){ startDuel(); return; }
+  myReady=true; send({t:'ready'});
+  hint('Ждём соперника…');
+  tryGo();
+}
 
 /* ═══════════ ПРОФИЛЬ И МИССИИ ═══════════ */
 const POOL=[
@@ -505,6 +762,7 @@ function judge(now){
   S.combo=deep?Math.min(2,S.combo+0.2):1;
   S.score+=Math.round(10*(deep?1.5:1)*S.combo);
   E.reps.textContent=S.reps;E.score.textContent=S.score;
+  if(MODE==='duel'){send({t:'rep',n:S.reps});paintDuel(Math.max(0,(duelEnd-now)/1000));}
   tone(deep?1200:840,deep?110:75);say(S.reps);
 }
 
@@ -551,7 +809,7 @@ function loop(){
         C.liftBot=Math.min(m.lift,C.liftTop-0.15);
         C.elbowBot=Math.min(m.elbow,C.elbowTop-30);
         try{localStorage.setItem('otzhim6',JSON.stringify(C))}catch(e){}
-        showRecal();tone(1200,200);hold=0;countdown();
+        showRecal();tone(1200,200);hold=0;afterCal();
       }
     }
     return;
@@ -566,13 +824,16 @@ function loop(){
   }
   if(!E.hint.textContent.startsWith('не засчитано')) hint('');
 
-  const sec=Math.floor((now-t0)/1000);
-  E.clock.textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+  if(MODE==='duel'){ duelTick(now); if(ended) return; }
+  else{
+    const sec=Math.floor((now-t0)/1000);
+    E.clock.textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+  }
   engine(m,now);
 }
 
 /* ── отсчёт ── */
-function countdown(){
+function countdown(after){
   phase='idle';hint('');E.bar.classList.remove('on');
   let n=3;E.tick.classList.add('on');E.tick.textContent=n;tone(660,110);
   const iv=setInterval(()=>{
@@ -581,21 +842,25 @@ function countdown(){
     else{clearInterval(iv);E.tick.classList.remove('on');tone(1200,220);
       resetSet();E.reps.textContent='0';E.score.textContent='0';E.clock.textContent='0:00';
       t0=performance.now();
-      E.hud.classList.add('on');E.gauge.classList.add('on');E.bottom.classList.add('on');
-      phase='counting';}
+      if(MODE==='solo') E.hud.classList.add('on');
+      E.gauge.classList.add('on');E.bottom.classList.add('on');
+      phase='counting'; if(after) after();}
   },1000);
 }
 
 function flow(skip){
   E.start.classList.remove('on');E.done.classList.remove('on');
-  E.hud.classList.remove('on');E.gauge.classList.remove('on');E.bottom.classList.remove('on');
+  E.hud.classList.remove('on');E.dhud.classList.remove('on');
+  E.gauge.classList.remove('on');E.bottom.classList.remove('on');
+  E.duelend.classList.remove('on');
   hold=0;E.barfill.style.width='0%';
-  if(skip&&C){countdown();}
+  if(skip&&C){afterCal();}
   else{C=null;E.bar.classList.add('on');phase='cal1';}
 }
 
 async function begin(){
-  E.err.textContent='';E.go.disabled=true;E.go.textContent='Запускаю…';
+  E.err.textContent='';
+  [E.play,E.friend,E.solo].forEach(b=>b.disabled=true);
   try{
     stream=await navigator.mediaDevices.getUserMedia({
       video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},audio:false});
@@ -626,7 +891,7 @@ async function begin(){
     E.err.textContent = e.name==='NotAllowedError'
       ? 'Камера запрещена. Разрешите доступ в адресной строке и нажмите ещё раз.'
       : 'Не удалось запустить: '+e.message;
-  }finally{E.go.disabled=false;E.go.textContent='Начать';}
+  }finally{[E.play,E.friend,E.solo].forEach(b=>b.disabled=false);}
 }
 
 function finish(){
@@ -645,12 +910,48 @@ function stopAll(){
   if(lock){lock.release().catch(()=>{});lock=null;}
   E.hud.classList.remove('on');E.gauge.classList.remove('on');
   E.bottom.classList.remove('on');E.bar.classList.remove('on');
-  E.done.classList.remove('on');E.start.classList.add('on');
+  E.done.classList.remove('on');E.duelend.classList.remove('on');
+  E.dhud.classList.remove('on');E.search.classList.remove('on');E.fr.classList.remove('on');
+  MODE='solo';OPP=null;dropPeer();
+  E.start.classList.add('on');
 }
 
-E.go.onclick=begin;
-E.stopb.onclick=finish;
+
+E.stopb.onclick=()=>{ MODE==='duel' ? endDuel() : finish(); };
 E.home.onclick=stopAll;
+
+/* меню */
+E.solo.onclick=()=>{MODE='solo';OPP=null;dropPeer();begin();};
+E.play.onclick=()=>{
+  MODE='duel';dropPeer();
+  E.start.classList.remove('on');E.search.classList.add('on');
+  E.searchTxt.textContent='Подбираем по вашему уровню…';
+  const t1=setTimeout(()=>{E.searchTxt.textContent='Почти нашли…'},2600);
+  searchTimer=setTimeout(()=>{
+    clearTimeout(t1);
+    OPP=makeBot();
+    E.search.classList.remove('on');
+    begin();
+  },5000);
+};
+E.searchCancel.onclick=()=>{clearTimeout(searchTimer);E.search.classList.remove('on');E.start.classList.add('on');};
+
+E.friend.onclick=()=>{
+  MODE='duel';dropPeer();
+  E.frPick.style.display='';E.frHostBox.style.display='none';E.frJoinBox.style.display='none';
+  E.frMsg.textContent='';E.frInput.value='';
+  E.start.classList.remove('on');E.fr.classList.add('on');
+};
+E.frHost.onclick=hostGame;
+E.frJoin.onclick=()=>{E.frPick.style.display='none';E.frJoinBox.style.display='';E.frInput.focus();};
+E.frGo.onclick=joinGame;
+E.frBack.onclick=()=>{dropPeer();E.fr.classList.remove('on');E.start.classList.add('on');};
+
+E.deAgain.onclick=()=>{
+  if(OPP&&OPP.bot){OPP=makeBot();flow(true);}
+  else{dropPeer();E.duelend.classList.remove('on');E.start.classList.add('on');stopAll();}
+};
+E.deHome.onclick=()=>{dropPeer();stopAll();};
 E.again.onclick=()=>flow(true);
 E.redo.onclick=()=>flow(false);
 E.recal.onclick=()=>{C=null;try{localStorage.removeItem('otzhim6')}catch(e){}showRecal();};

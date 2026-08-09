@@ -244,8 +244,9 @@ h2{font-family:'Oswald','Inter',sans-serif;font-size:clamp(28px,9vw,46px);letter
   box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(227,7,44,.28)}
 #play:active{background:linear-gradient(180deg,#A80520,#E3072C);
   box-shadow:inset 0 2px 6px rgba(0,0,0,.5)}
-#friend{background:var(--panel);color:var(--paper);border:1px solid var(--line);
+#missBtn,#friend{background:var(--panel);color:var(--paper);border:1px solid var(--line);
   font-size:11.5px;letter-spacing:.2em;padding:17px 30px;width:100%;border-radius:2px}
+#missBtn:active,#friend:active{background:#1B1F23}
 #solo{background:none;color:var(--dim);border:1px solid var(--line);
   font-size:10.5px;letter-spacing:.2em;padding:15px 28px;width:100%;border-radius:2px}
 .code{font-family:'Oswald','Inter',sans-serif;font-size:clamp(38px,14vw,66px);
@@ -339,7 +340,7 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <div id="settings" class="settings">
     <label class="tg"><input type="checkbox" id="voice"> Считать вслух</label>
     <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
-    <p class="ver">версия 31 · миссии отдельным экраном</p>
+    <p class="ver">версия 32 · починен запуск экрана миссий</p>
   </div>
 </section>
 
@@ -1303,6 +1304,22 @@ E.again.onclick=()=>flow(true);
 E.redo.onclick=()=>flow(false);
 E.recal.onclick=()=>{C=null;try{localStorage.removeItem('otzhim6')}catch(e){}showRecal();};
 window.addEventListener('pagehide',()=>{try{leaveNet()}catch(e){}});
+/* ── запуск ── */
+loadPL();
+paintPlayer();
+E.myCode.textContent=CODE;
+E.gear.onclick=()=>E.settings.classList.toggle('on');
+
+if(!FB_OK){
+  const bar=document.createElement('div');
+  bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99;background:#E3072C;color:#fff;'+
+    'font:600 12px/1.5 "IBM Plex Mono",monospace;padding:10px 14px;text-align:center';
+  bar.textContent='Сеть недоступна: '+FB_ERR+'. Бой с соперником не работает, остальное — да.';
+  document.body.appendChild(bar);
+  E.play.textContent='Играть с ботом';
+  E.friend.disabled=true; E.friend.style.opacity='.4';
+}
+
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&phase==='counting')finish();});
 </script>
 </body>

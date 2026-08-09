@@ -86,8 +86,12 @@ body{font-family:Inter,system-ui,sans-serif;color:var(--paper)}
 #bottom{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 18px);
   display:none;justify-content:center}
 #bottom.on{display:flex}
-button{font-family:'IBM Plex Mono',monospace;font-weight:600;letter-spacing:.12em;
-  text-transform:uppercase;cursor:pointer;border:none;border-radius:999px}
+button{font-family:'IBM Plex Mono',monospace;font-weight:600;letter-spacing:.18em;
+  text-transform:uppercase;cursor:pointer;border-radius:2px;
+  background:var(--panel);color:var(--paper);border:1px solid var(--line);
+  font-size:11.5px;padding:15px 26px}
+button:active{background:#1B1F23}
+button:disabled{opacity:.45;cursor:default}
 #stopb{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.4);
   backdrop-filter:blur(8px);font-size:12px;padding:13px 26px}
 
@@ -249,8 +253,9 @@ h2{font-family:'Oswald','Inter',sans-serif;font-size:clamp(28px,9vw,46px);letter
 #missBtn:active,#friend:active{background:#1B1F23}
 #solo{background:none;color:var(--dim);border:1px solid var(--line);
   font-size:10.5px;letter-spacing:.2em;padding:15px 28px;width:100%;border-radius:2px}
-.code{font-family:'Oswald','Inter',sans-serif;font-size:clamp(38px,14vw,66px);
-  letter-spacing:.16em;color:var(--hi);text-align:center;margin:6px 0}
+.code{font-family:'Oswald','Inter',sans-serif;font-weight:500;
+  font-size:clamp(40px,15vw,72px);letter-spacing:.2em;color:var(--red);
+  text-align:center;margin:8px 0 4px}
 input[type=text]{background:#121820;border:1px solid #2A3740;color:var(--paper);
   font-family:'Oswald','Inter',sans-serif;font-size:30px;letter-spacing:.14em;text-align:center;
   padding:16px 10px;width:100%;border-radius:12px;text-transform:uppercase}
@@ -340,7 +345,7 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <div id="settings" class="settings">
     <label class="tg"><input type="checkbox" id="voice"> Считать вслух</label>
     <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
-    <p class="ver">версия 32 · починен запуск экрана миссий</p>
+    <p class="ver">версия 33 · разовый код, единый стиль кнопок</p>
   </div>
 </section>
 
@@ -360,14 +365,13 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
 
 <section id="fr" class="sheet">
   <h2>Игра с другом</h2>
-  <div class="mycode">Ваш постоянный код <b id="myCode">—</b><span>он не меняется, друг может вписать его когда угодно</span></div>
   <div class="menu" id="frPick">
     <button id="frHost">Создать код</button>
     <button id="frJoin">Ввести код</button>
   </div>
 
   <div id="frHostBox" style="display:none">
-    <p class="wait">Продиктуйте другу свой постоянный код</p>
+    <p class="wait">Продиктуйте другу этот код</p>
     <div class="code" id="frCode">—</div>
     <div class="spin"></div>
     <p class="wait">Ждём подключения…</p>
@@ -406,7 +410,6 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <div id="mres"></div>
   <div class="row">
     <button id="again">Ещё подход</button>
-    <button class="ghost" id="redo">Перекалибровать</button>
     <button class="ghost" id="home">В начало</button>
   </div>
 </section>
@@ -451,8 +454,8 @@ const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23
 
 const $=i=>document.getElementById(i), E={};
 ['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
- 'bottom','stopb','stage','start','done','go','err','recal','voice','again','redo','home',
- 'dR','dS','dT','dB','dTotal','play','friend','solo','search','searchTxt','searchCancel','miss','missBtn','missBack','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','gear','settings','myCode','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plTotal','plXp','missions','mres'].forEach(k=>E[k]=$(k));
+ 'bottom','stopb','stage','start','done','go','err','recal','voice','again','home',
+ 'dR','dS','dT','dB','dTotal','play','friend','solo','search','searchTxt','searchCancel','miss','missBtn','missBack','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','gear','settings','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plTotal','plXp','missions','mres'].forEach(k=>E[k]=$(k));
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
@@ -568,11 +571,7 @@ let hbTimer=0;
 
 const ABC='ACEFHJKLMNPRTUVWXY3479';
 function makeCode(){let x='';for(let i=0;i<5;i++)x+=ABC[Math.floor(Math.random()*ABC.length)];return x;}
-const CODE=(()=>{ try{
-    let c=localStorage.getItem('otzhim.code');
-    if(!c){ c=makeCode(); localStorage.setItem('otzhim.code',c); }
-    return c;
-  }catch(e){ return makeCode(); } })();
+let FRCODE=null;            // разовый код для игры с другом
 
 function startHeartbeat(path){
   stopHeartbeat();
@@ -694,14 +693,16 @@ async function findMatch(){
 /* ── друг заходит по личному коду ── */
 async function hostGame(){
   E.frPick.style.display='none'; E.frHostBox.style.display=''; E.frMsg.textContent='';
-  E.frCode.textContent=CODE;
+  if(FRCODE) closeRoom(FRCODE);
+  FRCODE=makeCode();                       // каждый раз новый
+  E.frCode.textContent=FRCODE;
   try{
-    await openRoom(CODE,false);
-    const jr=ref(db,roomPath(CODE)+'/joined');
+    await openRoom(FRCODE,false);
+    const jr=ref(db,roomPath(FRCODE)+'/joined');
     onValue(jr,snap=>{
       if(snap.val()===true){
         off(jr);
-        NET={rid:CODE,me:'a',foe:'b'};
+        NET={rid:FRCODE,me:'a',foe:'b'};
         OPP={name:'Друг',reps:0,bot:false};
         MODE='duel'; E.fr.classList.remove('on'); begin();
       }
@@ -712,7 +713,7 @@ async function hostGame(){
 async function joinGame(){
   const code=(E.frInput.value||'').trim().toUpperCase();
   if(code.length<5){ E.frMsg.textContent='Код из 5 символов'; return; }
-  if(code===CODE){ E.frMsg.textContent='Это ваш собственный код'; return; }
+  if(code===FRCODE){ E.frMsg.textContent='Это ваш собственный код'; return; }
   E.frMsg.textContent='Подключаюсь…';
   const ok=await tryJoin(code,t=>{E.frMsg.textContent=t;});
   if(ok){
@@ -749,7 +750,7 @@ function leaveNet(){
   stopHeartbeat();
   if(FB_OK){
     if(QID){ remove(ref(db,'open/'+QID)).catch(()=>{}); remove(ref(db,roomPath(QID))).catch(()=>{}); QID=null; }
-    remove(ref(db,roomPath(CODE))).catch(()=>{});
+    if(FRCODE){ remove(ref(db,roomPath(FRCODE))).catch(()=>{}); FRCODE=null; }
   }
   try{ if(roomRef&&roomUnsub) off(roomRef); }catch(e){}
   roomRef=null;roomUnsub=null;NET=null;goneToDuel=false;
@@ -1301,13 +1302,11 @@ E.deHome.onclick=()=>{
   if(wasChal){ E.start.classList.remove('on'); E.miss.classList.add('on'); }
 };
 E.again.onclick=()=>flow(true);
-E.redo.onclick=()=>flow(false);
 E.recal.onclick=()=>{C=null;try{localStorage.removeItem('otzhim6')}catch(e){}showRecal();};
 window.addEventListener('pagehide',()=>{try{leaveNet()}catch(e){}});
 /* ── запуск ── */
 loadPL();
 paintPlayer();
-E.myCode.textContent=CODE;
 E.gear.onclick=()=>E.settings.classList.toggle('on');
 
 if(!FB_OK){

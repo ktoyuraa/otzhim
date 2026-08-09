@@ -8,11 +8,21 @@
 <title>ОТЖИМ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#0B0D0F; --paper:#F2F4F5; --dim:#98A0A6;
-  --hi:#22DD6E; --mid:#3B82F6; --lo:#EF4444; --gold:#FFC44D;
+  --ink:#0C0E10;        /* графит салона */
+  --panel:#15181B;      /* щиток */
+  --line:#2A2F34;       /* тонкая линия */
+  --alu:#9AA2A8;        /* алюминий: подписи */
+  --paper:#F3F4F4;      /* белая разметка циферблата */
+  --dim:#6E767C;
+  --red:#E3072C;        /* Rosso: пуск и отсечка */
+  --hi:#22DD6E;         /* мой счёт в бою */
+  --mid:#3B82F6;
+  --lo:#E3072C;
+  --gold:#F3F4F4;
+  --panel2:#101315;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:var(--ink)}
@@ -42,7 +52,7 @@ body{font-family:Inter,system-ui,sans-serif;color:var(--paper)}
 #hud.on{display:flex}
 .hudcell{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;
   text-transform:uppercase;color:var(--dim);text-shadow:0 1px 6px rgba(0,0,0,.9)}
-.hudcell b{display:block;font-family:'Archivo Black',sans-serif;font-size:34px;
+.hudcell b{display:block;font-family:'Oswald','Inter',sans-serif;font-size:34px;
   color:var(--paper);letter-spacing:-.02em;line-height:1.05;margin-top:2px;
   text-shadow:0 2px 12px rgba(0,0,0,.85)}
 .hudcell b.big{font-size:56px;color:var(--hi)}
@@ -57,7 +67,7 @@ body{font-family:Inter,system-ui,sans-serif;color:var(--paper)}
 #hint.bad{color:var(--lo)}
 #hint em{font-style:normal;color:var(--gold)}
 #tick{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
-  font-family:'Archivo Black',sans-serif;font-size:34vh;color:var(--hi);
+  font-family:'Oswald','Inter',sans-serif;font-size:34vh;color:var(--hi);
   text-shadow:0 4px 40px rgba(0,0,0,.9)}
 #tick.on{display:flex}
 #bar{position:absolute;left:12vw;right:12vw;bottom:20vh;height:5px;
@@ -70,7 +80,7 @@ body{font-family:Inter,system-ui,sans-serif;color:var(--paper)}
   flex-direction:column;gap:16px;z-index:5;padding:24px}
 #simwrap.on{display:flex}
 #simbtn{background:var(--hi);color:#04160B;font-size:20px;padding:34px 46px;border-radius:24px;
-  font-family:'Archivo Black',sans-serif;letter-spacing:0;text-transform:none}
+  font-family:'Oswald','Inter',sans-serif;letter-spacing:-.02em;text-transform:none}
 #simbtn:active{transform:scale(.97)}
 #simnote{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);text-align:center;line-height:1.6}
 #bottom{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 18px);
@@ -83,56 +93,82 @@ button{font-family:'IBM Plex Mono',monospace;font-weight:600;letter-spacing:.12e
 
 /* ── стартовый и итоговый экраны ── */
 .sheet{position:fixed;inset:0;background:var(--ink);z-index:20;display:none;
-  flex-direction:column;justify-content:center;gap:18px;padding:8vh 8vw;overflow-y:auto}
+  flex-direction:column;justify-content:center;gap:20px;padding:8vh 8vw;overflow-y:auto}
 .sheet.on{display:flex}
-h1{font-family:'Archivo Black',sans-serif;font-size:clamp(34px,12vw,62px);line-height:.9;letter-spacing:-.03em}
-h1 em{font-style:normal;color:var(--hi)}
-.lede{color:var(--dim);font-size:15px;line-height:1.55;max-width:38ch}
+h1{font-family:'Oswald','Inter',sans-serif;font-weight:500;
+  font-size:clamp(30px,9vw,46px);line-height:1;letter-spacing:.34em;
+  text-transform:uppercase;color:var(--paper)}
+h1 em{font-style:normal;color:var(--red)}
+.lede{color:var(--dim);font-size:13.5px;line-height:1.6;max-width:40ch}
 .steps{list-style:none;display:flex;flex-direction:column;gap:9px}
-.steps li{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--paper);
-  padding-left:3.4ch;position:relative;line-height:1.5;opacity:.85}
-.steps li::before{content:attr(data-n);position:absolute;left:0;color:var(--hi);font-weight:600}
+.steps li{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--alu);
+  padding-left:3.4ch;position:relative;line-height:1.55}
+.steps li::before{content:attr(data-n);position:absolute;left:0;color:var(--red);font-weight:500}
 #go{background:var(--hi);color:#04160B;font-size:14px;padding:17px 34px;align-self:flex-start}
 #go:disabled{background:#2A3238;color:var(--dim)}
-.ghost{background:none;color:var(--dim);border:1px solid #2A3238;font-size:11px;padding:12px 20px}
+.ghost{background:none;color:var(--dim);border:1px solid var(--line);
+  font-size:10px;letter-spacing:.18em;padding:12px 20px;border-radius:2px}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.ver{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--hi);opacity:.8}
+.gear{background:none;border:none;color:#4A555C;font-family:'IBM Plex Mono',monospace;
+  font-size:10px;letter-spacing:.14em;padding:6px 0;align-self:flex-start;cursor:pointer}
+.gear:hover{color:var(--dim)}
+.settings{display:none;flex-direction:column;gap:12px;align-items:flex-start;
+  padding:12px 0 0;border-top:1px solid #1A2126}
+.settings.on{display:flex}
+.ver{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--dim)}
 .err{color:var(--lo);font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.5}
 .tg{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;
   text-transform:uppercase;color:var(--dim);display:flex;align-items:center;gap:9px;cursor:pointer}
-.tg input{accent-color:var(--hi);width:17px;height:17px}
-h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-spacing:-.02em}
+.tg input{accent-color:var(--red);width:17px;height:17px}
+h2{font-family:'Oswald','Inter',sans-serif;font-size:clamp(28px,9vw,46px);letter-spacing:-.02em}
 .grid{display:flex;flex-wrap:wrap;gap:22px 34px;margin:6px 0 10px}
 .st{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.13em;
   text-transform:uppercase;color:var(--dim)}
-.st b{display:block;font-family:'Archivo Black',sans-serif;font-size:40px;
+.st b{display:block;font-family:'Oswald','Inter',sans-serif;font-size:40px;
   color:var(--paper);letter-spacing:-.02em;margin-top:4px}
 .st.w b{color:var(--lo)}
 /* игрок и миссии */
 #player{display:flex;flex-direction:column;gap:9px}
-.plrow{display:flex;gap:26px;font-family:'IBM Plex Mono',monospace;font-size:10px;
-  letter-spacing:.13em;text-transform:uppercase;color:var(--dim)}
-.plrow b{display:block;font-family:'Archivo Black',sans-serif;font-size:22px;
-  color:var(--paper);letter-spacing:-.02em;margin-top:3px}
-.plrow .g b{color:var(--hi)}
-.plrow .y b{color:var(--gold)}
-.xpbar{height:5px;background:#1B2126;border-radius:3px;overflow:hidden}
-.xpbar i{display:block;height:100%;background:var(--hi);width:0}
-#missions{display:flex;flex-direction:column;gap:11px}
-.mhead{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.15em;
+.cluster{display:flex;align-items:center;gap:26px}
+.dial{position:relative;width:142px;height:142px;flex:none}
+.dial svg{width:100%;height:100%;transform:rotate(0deg)}
+.dial path{fill:none;stroke-linecap:butt}
+  .dtrack{stroke:#20262B;stroke-width:6}
+.dred{stroke:var(--red);stroke-width:6;stroke-dasharray:0 88 12 100}
+.dticks path{stroke:var(--ink);stroke-width:8;
+  stroke-dasharray:.6 5.6;stroke-dashoffset:.3}
+.dfill{stroke:var(--paper);stroke-width:6;stroke-dasharray:0 100;
+  transition:stroke-dasharray .5s cubic-bezier(.2,.7,.2,1)}
+.dcore{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:5px;padding-bottom:6px}
+.dcore b{font-family:'Oswald','Inter',sans-serif;font-weight:400;font-size:52px;
+  line-height:.9;color:var(--paper)}
+.dcore span{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.22em;
   text-transform:uppercase;color:var(--dim)}
-.m{background:#141A1F;border:1px solid #1F272D;border-radius:12px;padding:12px 14px;
-  display:flex;flex-direction:column;gap:8px}
-.m.done{border-color:var(--hi);background:#0F1C15}
+.gauges{display:flex;flex-direction:column;gap:16px;flex:1}
+.gz{display:flex;flex-direction:column;gap:2px;
+  border-left:1px solid var(--line);padding-left:14px}
+.gz span{font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--dim)}
+.gz b{font-family:'Oswald','Inter',sans-serif;font-weight:400;font-size:30px;
+  line-height:1;color:var(--paper)}
+#missions{display:flex;flex-direction:column;gap:11px}
+.mhead{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--dim);padding-bottom:2px}
+.m{background:var(--panel);border:1px solid var(--line);border-radius:2px;
+  padding:13px 15px;display:flex;flex-direction:column;gap:9px}
+.m.done{border-color:#38414700;background:var(--panel2)}
 .mtop{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-.mt{font-size:13.5px;line-height:1.35}
-.mr{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--gold);white-space:nowrap}
-.m.done .mr{color:var(--hi)}
-.mbar{height:4px;background:#222A31;border-radius:2px;overflow:hidden}
-.mbar i{display:block;height:100%;background:var(--mid)}
-.m.done .mbar i{background:var(--hi)}
-.mn{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim)}
+.mt{font-size:13px;line-height:1.35;color:var(--paper)}
+.m.done .mt{color:var(--alu)}
+.mr{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.1em;
+  color:var(--alu);white-space:nowrap}
+.m.done .mr{color:var(--red)}
+.mbar{height:2px;background:#22282D;overflow:hidden}
+.mbar i{display:block;height:100%;background:var(--alu)}
+.m.done .mbar i{background:var(--red)}
+.mn{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.08em;color:var(--dim)}
 #mres{display:flex;flex-direction:column;gap:9px}
 .mrow{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);
   display:flex;justify-content:space-between;gap:12px}
@@ -146,12 +182,12 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
 .dside{display:flex;flex-direction:column;min-width:74px}
 .dside .nm{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dside .n{font-family:'Archivo Black',sans-serif;font-size:42px;line-height:1;letter-spacing:-.03em;
+.dside .n{font-family:'Oswald','Inter',sans-serif;font-size:42px;line-height:1;letter-spacing:-.03em;
   text-shadow:0 2px 12px rgba(0,0,0,.9)}
 .dside.me .n{color:var(--hi)}
 .dside.op{align-items:flex-end;text-align:right}
 .dside.op .n{color:var(--lo)}
-.dclock{font-family:'Archivo Black',sans-serif;font-size:30px;letter-spacing:-.02em;
+.dclock{font-family:'Oswald','Inter',sans-serif;font-size:30px;letter-spacing:-.02em;
   text-shadow:0 2px 12px rgba(0,0,0,.9)}
 .dclock.warn{color:var(--lo)}
 #dbar{margin-top:9px;height:7px;border-radius:4px;overflow:hidden;background:var(--lo);
@@ -161,26 +197,34 @@ h2{font-family:'Archivo Black',sans-serif;font-size:clamp(28px,9vw,46px);letter-
 /* меню и коды */
 .mycode{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.13em;
   text-transform:uppercase;color:var(--dim);display:flex;flex-direction:column;gap:3px}
-.mycode b{font-family:'Archivo Black',sans-serif;font-size:30px;letter-spacing:.14em;
-  color:var(--gold);text-transform:none}
+.mycode b{font-family:'Oswald','Inter',sans-serif;font-weight:500;font-size:34px;
+  letter-spacing:.2em;color:var(--red);text-transform:none}
 .mycode span{font-size:10px;letter-spacing:.04em;text-transform:none;opacity:.7}
 .menu{display:flex;flex-direction:column;gap:10px}
-#play{background:var(--hi);color:#04160B;font-size:15px;padding:19px 34px;width:100%}
-#friend{background:#1B242B;color:var(--paper);border:1px solid #2A3740;font-size:13px;padding:16px 30px;width:100%}
-#solo{background:none;color:var(--dim);border:1px solid #232B31;font-size:12px;padding:14px 28px;width:100%}
-.code{font-family:'Archivo Black',sans-serif;font-size:clamp(38px,14vw,66px);
+#play{position:relative;width:100%;padding:20px 30px;border-radius:2px;
+  background:linear-gradient(180deg,#F02742,var(--red) 45%,#A80520);
+  color:#fff;font-size:13px;letter-spacing:.28em;
+  border:1px solid #FF5C74;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 6px 18px rgba(227,7,44,.28)}
+#play:active{background:linear-gradient(180deg,#A80520,#E3072C);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.5)}
+#friend{background:var(--panel);color:var(--paper);border:1px solid var(--line);
+  font-size:11.5px;letter-spacing:.2em;padding:17px 30px;width:100%;border-radius:2px}
+#solo{background:none;color:var(--dim);border:1px solid var(--line);
+  font-size:10.5px;letter-spacing:.2em;padding:15px 28px;width:100%;border-radius:2px}
+.code{font-family:'Oswald','Inter',sans-serif;font-size:clamp(38px,14vw,66px);
   letter-spacing:.16em;color:var(--hi);text-align:center;margin:6px 0}
 input[type=text]{background:#121820;border:1px solid #2A3740;color:var(--paper);
-  font-family:'Archivo Black',sans-serif;font-size:30px;letter-spacing:.14em;text-align:center;
+  font-family:'Oswald','Inter',sans-serif;font-size:30px;letter-spacing:.14em;text-align:center;
   padding:16px 10px;width:100%;border-radius:12px;text-transform:uppercase}
 input[type=text]:focus{outline:none;border-color:var(--hi)}
 .wait{font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--dim);text-align:center;line-height:1.6}
 .spin{width:44px;height:44px;border:3px solid #223038;border-top-color:var(--hi);
   border-radius:50%;margin:10px auto;animation:sp 1s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
-.big{font-family:'Archivo Black',sans-serif;font-size:clamp(40px,13vw,68px);letter-spacing:-.03em;line-height:1}
+.big{font-family:'Oswald','Inter',sans-serif;font-size:clamp(40px,13vw,68px);letter-spacing:-.03em;line-height:1}
 .big.win{color:var(--hi)} .big.lose{color:var(--lo)} .big.tie{color:var(--gold)}
-.vs{display:flex;align-items:baseline;gap:14px;font-family:'Archivo Black',sans-serif;font-size:52px}
+.vs{display:flex;align-items:baseline;gap:14px;font-family:'Oswald','Inter',sans-serif;font-size:52px}
 .vs .a{color:var(--hi)} .vs .b{color:var(--lo)} .vs .d{color:var(--dim);font-size:26px}
 @media (prefers-reduced-motion:reduce){#ball{transition:none}.spin{animation:none}}
 </style>
@@ -229,12 +273,23 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
     <li data-n="03">Калибровка: верхняя точка и нижняя, по 2 секунды</li>
   </ul>
   <div id="player">
-    <div class="plrow">
-      <div>Уровень<b id="plLvl">1</b></div>
-      <div class="g">Серия<b id="plStrk">0</b></div>
-      <div class="y">Монеты<b id="plCoin">0</b></div>
+    <div class="cluster">
+      <div class="dial">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <path class="dtrack" d="M25.5 94.5 A48 48 0 1 1 94.5 94.5" pathLength="100"/>
+          <path class="dfill" id="plXp" d="M25.5 94.5 A48 48 0 1 1 94.5 94.5" pathLength="100"/>
+          <path class="dred" d="M25.5 94.5 A48 48 0 1 1 94.5 94.5" pathLength="100"/>
+          <g class="dticks">
+            <path d="M25.5 94.5 A48 48 0 1 1 94.5 94.5" pathLength="100"/>
+          </g>
+        </svg>
+        <div class="dcore"><b id="plLvl">1</b><span>уровень</span></div>
+      </div>
+      <div class="gauges">
+        <div class="gz"><span>Серия</span><b id="plStrk">0</b></div>
+        <div class="gz"><span>Монеты</span><b id="plCoin">0</b></div>
+      </div>
     </div>
-    <div class="xpbar"><i id="plXp"></i></div>
   </div>
 
   <div id="missions"><div class="mhead">Миссии дня</div></div>
@@ -244,12 +299,13 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
     <button id="friend">Играть с другом</button>
     <button id="solo">Тренировка без соперника</button>
   </div>
-  <div class="row">
-    <label class="tg"><input type="checkbox" id="voice"> Голосом</label>
-  </div>
-  <div class="row"><button class="ghost" id="recal" style="display:none">Сбросить калибровку</button></div>
   <p id="err" class="err"></p>
-  <p class="ver">версия 23 · поиск 15 секунд</p>
+  <button id="gear" class="gear">Настройки</button>
+  <div id="settings" class="settings">
+    <label class="tg"><input type="checkbox" id="voice"> Считать вслух</label>
+    <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
+    <p class="ver">версия 27 · приборная панель</p>
+  </div>
 </section>
 
 <section id="search" class="sheet">
@@ -352,7 +408,7 @@ const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23
 const $=i=>document.getElementById(i), E={};
 ['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
  'bottom','stopb','stage','start','done','go','err','recal','voice','again','redo','home',
- 'dR','dS','dT','dB','play','friend','solo','search','searchTxt','searchCancel','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','myCode','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
+ 'dR','dS','dT','dB','play','friend','solo','search','searchTxt','searchCancel','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','gear','settings','myCode','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
@@ -779,7 +835,7 @@ function paintPlayer(){
   E.plLvl.textContent=level();
   E.plStrk.textContent=PL.streak;
   E.plCoin.textContent=PL.coins;
-  E.plXp.style.width=((PL.xp%XP_LVL)/XP_LVL*100)+'%';
+  E.plXp.style.strokeDasharray=((PL.xp%XP_LVL)/XP_LVL*100).toFixed(1)+' 100';
 
   E.missions.innerHTML='<div class="mhead">Миссии дня</div>';
   PL.ms.forEach(x=>{
@@ -806,6 +862,7 @@ function paintResult(news){
 }
 loadPL(); paintPlayer();
 E.myCode.textContent=CODE;
+E.gear.onclick=()=>E.settings.classList.toggle('on');
 
 if(!FB_OK){
   const bar=document.createElement('div');

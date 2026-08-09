@@ -419,7 +419,8 @@ function endDuel(){
   E.simwrap.classList.remove('on');
   if(NET){
     pushReps(S.reps);
-    if(NET.me==='a') setTimeout(()=>remove(ref(db,'rooms/'+NET.rid)).catch(()=>{}),1500);
+    if(NET.me==='a'){ stopHeartbeat();
+      setTimeout(()=>remove(ref(db,'rooms/'+NET.rid)).catch(()=>{}),1500); }
   }
   clearTimeout(readyTimer);
   tone(300,400,'sine');
@@ -457,72 +458,101 @@ let roomRef=null, roomUnsub=null, goneToDuel=false;
 function myLvl(){return level()}
 
 const LOBBY='quick';        // общая комната для быстрой игры
+const HB_MS=1500;           // как часто хозяин подаёт признак жизни
+const PROBE_MS=2600;        // сколько ждём, проверяя, живой ли хозяин
+let hbTimer=0;
 
-/* Быстрая игра = та же комната, что и «с другом», только код общий.
-   Первый создаёт, второй заходит. Никаких очередей. */
+function startHeartbeat(path){
+  stopHeartbeat();
+  hbTimer=setInterval(()=>{
+    update(ref(db,path),{hb:Math.random().toString(36).slice(2)}).catch(()=>{});
+  },HB_MS);
+}
+function stopHeartbeat(){ if(hbTimer){clearInterval(hbTimer);hbTimer=0;} }
+
+/* Быстрая игра = общая комната. Первый создаёт и подаёт признак жизни,
+   второй заходит. Брошенные комнаты сносятся автоматически. */
 async function findMatch(){
   goneToDuel=false;
   const path='rooms/'+LOBBY;
   const t0s=Date.now();
 
-  const say=(txt)=>{
+  const say=txt=>{
     const left=Math.max(0,Math.ceil((SEARCH_MS-(Date.now()-t0s))/1000));
     E.searchTxt.innerHTML=txt+'<br><span style="opacity:.6">ещё '+left+' сек</span>';
   };
 
   return await new Promise(res=>{
-    let done=false, iv=0;
+    let done=false, iv=0, busy=false;
     const finish=v=>{
       if(done) return; done=true;
       clearInterval(iv);
       try{ off(ref(db,path+'/joined')); }catch(e){}
+      if(!v) stopHeartbeat();
       res(v);
     };
-    botNow=()=>{ if(NET&&NET.me==='a') remove(ref(db,path)).catch(()=>{}); NET=null; finish(null); };
+    botNow=()=>{
+      if(NET&&NET.me==='a'){ stopHeartbeat(); remove(ref(db,path)).catch(()=>{}); }
+      NET=null; finish(null);
+    };
 
-    /* я создал комнату — жду, пока кто-нибудь зайдёт */
+    /* создал комнату — жду гостя, подавая признак жизни */
     const hostWait=()=>{
       NET={rid:LOBBY,me:'a',foe:'b'};
+      startHeartbeat(path);
       say('Комната открыта. Ждём соперника…');
       const jr=ref(db,path+'/joined');
-      onValue(jr,snap=>{
-        if(snap.val()===true && !done){ off(jr); finish(NET); }
-      });
+      onValue(jr,snap=>{ if(snap.val()===true && !done){ off(jr); finish(NET); } });
+    };
+
+    const createRoom=async()=>{
+      await set(ref(db,path),{a:{uid:UID,reps:0,ready:false},
+                              b:{uid:null,reps:0,ready:false},
+                              go:false,joined:false,hb:'0'});
+      try{ onDisconnect(ref(db,path)).remove(); }catch(e){}
+      await new Promise(r=>setTimeout(r,600));          // вдруг заняли одновременно
+      let w=null; try{ w=(await get(ref(db,path))).val(); }catch(e){}
+      if(w&&w.a&&w.a.uid===UID){ clearInterval(iv); hostWait(); }
     };
 
     const step=async()=>{
-      if(done) return;
-      let v=null;
-      try{ v=(await get(ref(db,path))).val(); }catch(e){ say('Нет связи с базой…'); return; }
-
-      if(!v){                                   // свободно — занимаю
-        try{
-          await set(ref(db,path),{a:{uid:UID,reps:0,ready:false},
-                                  b:{uid:null,reps:0,ready:false},go:false,joined:false});
-          try{ onDisconnect(ref(db,path)).remove(); }catch(e){}
-        }catch(e){ return; }
-        await new Promise(r=>setTimeout(r,700));  // вдруг кто-то занял одновременно
-        let w=null; try{ w=(await get(ref(db,path))).val(); }catch(e){}
-        if(w && w.a && w.a.uid===UID){ clearInterval(iv); hostWait(); }
-        return;
-      }
-
-      if(v.a && v.a.uid===UID){ clearInterval(iv); hostWait(); return; }   // это моя комната
-
-      if(v.joined===true){ say('Комната занята другой парой. Ждём…'); return; }
-
-      // комната есть и свободна — захожу вторым
+      if(done||busy) return;
+      busy=true;
       try{
+        let v=null;
+        try{ v=(await get(ref(db,path))).val(); }catch(e){ say('Нет связи с базой…'); return; }
+
+        if(!v){ say('Открываю комнату…'); await createRoom(); return; }
+        if(v.a&&v.a.uid===UID){ clearInterval(iv); hostWait(); return; }
+
+        // проверяю, живой ли хозяин: менялся ли признак жизни
+        say(v.joined===true ? 'Комната занята. Проверяю…' : 'Нашёл комнату. Проверяю…');
+        const hb1=v.hb;
+        await new Promise(r=>setTimeout(r,PROBE_MS));
+        if(done) return;
+        let v2=null; try{ v2=(await get(ref(db,path))).val(); }catch(e){ return; }
+        if(!v2){ say('Комната освободилась…'); return; }
+
+        if(v2.hb===hb1){                                 // хозяин мёртв — сношу
+          say('Комната брошена. Убираю…');
+          await remove(ref(db,path)).catch(()=>{});
+          return;
+        }
+        if(v2.joined===true){ say('Комната занята другой парой. Ждём…'); return; }
+
         await update(ref(db,path),{joined:true,'b/uid':UID});
         NET={rid:LOBBY,me:'b',foe:'a'};
         finish(NET);
-      }catch(e){}
+      } finally { busy=false; }
     };
 
     step();
     iv=setInterval(step,900);
-    setTimeout(()=>{ if(NET&&NET.me==='a') remove(ref(db,path)).catch(()=>{});
-                     if(!done){NET=null;finish(null);} },SEARCH_MS);
+    setTimeout(()=>{
+      if(done) return;
+      if(NET&&NET.me==='a'){ stopHeartbeat(); remove(ref(db,path)).catch(()=>{}); }
+      NET=null; finish(null);
+    },SEARCH_MS);
   });
 }
 
@@ -547,6 +577,7 @@ function watchRoom(onGo){
 function markReady(){ update(ref(db,'rooms/'+NET.rid+'/'+NET.me),{ready:true}).catch(()=>{}); }
 function pushReps(n){ if(NET) update(ref(db,'rooms/'+NET.rid+'/'+NET.me),{reps:n}).catch(()=>{}); }
 function leaveNet(){
+  stopHeartbeat();
   try{ if(roomRef&&roomUnsub) off(roomRef); }catch(e){}
   roomRef=null;roomUnsub=null;NET=null;goneToDuel=false;
 }

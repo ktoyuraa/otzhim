@@ -449,37 +449,49 @@ async function findMatch(){
   goneToDuel=false;
   const rid=push(ref(db,'rooms')).key;
 
-  // 1) смотрим, кто уже ждёт
-  let list={};
-  try{ list=(await get(ref(db,'queue'))).val()||{}; }catch(e){ return null; }
-  const cands=Object.entries(list)
-    .filter(([u,v])=>u!==UID && v && !v.rid && Date.now()-(v.t||0)<STALE)
-    .sort((a,b)=>(a[1].t||0)-(b[1].t||0));
-
-  for(const [u] of cands){
-    await set(ref(db,'rooms/'+rid),{a:{reps:0,ready:false},b:{reps:0,ready:false},go:false});
-    if(await claim(u,rid)){
-      NET={rid,me:'b',foe:'a'};
-      return NET;
-    }
-    await remove(ref(db,'rooms/'+rid));    // не срослось — прибираем
-  }
-
-  // 2) никого нет — встаём в очередь сами
+  // встаём в очередь сразу — иначе при одновременном старте оба видят пусто
   queueRef=ref(db,'queue/'+UID);
   await set(queueRef,{t:Date.now(),lvl:myLvl()});
   try{ onDisconnect(queueRef).remove(); }catch(e){}
 
   return await new Promise(res=>{
-    let done=false;
-    const stop=()=>{ if(!done){done=true; off(queueRef); } };
+    let done=false, iv=0;
+    const finish=v=>{
+      if(done) return; done=true;
+      clearInterval(iv);
+      try{ off(queueRef); }catch(e){}
+      remove(queueRef).catch(()=>{});
+      res(v);
+    };
+
+    // 1) кто-то забрал меня
     onValue(queueRef,snap=>{
       const v=snap.val();
-      if(v&&v.rid&&!done){ stop(); NET={rid:v.rid,me:'a',foe:'b'};
-        remove(queueRef).catch(()=>{}); res(NET); }
+      if(v&&v.rid) { NET={rid:v.rid,me:'a',foe:'b'}; finish(NET); }
     });
-    setTimeout(()=>{ if(done)return; stop();
-      remove(queueRef).catch(()=>{}); res(null); },5000);
+
+    // 2) сам продолжаю осматриваться
+    const scan=async()=>{
+      if(done) return;
+      let list={};
+      try{ list=(await get(ref(db,'queue'))).val()||{}; }catch(e){ return; }
+      const n=Object.keys(list).length;
+      E.searchTxt.textContent = n>1 ? 'В очереди сейчас '+n+' — связываем…'
+                                    : 'Ждём соперника…';
+      // инициативу берёт тот, чей идентификатор меньше: так не заберём друг друга
+      const cands=Object.entries(list)
+        .filter(([u,v])=>u!==UID && v && !v.rid && UID<u && Date.now()-(v.t||0)<STALE)
+        .sort((a,b)=>(a[1].t||0)-(b[1].t||0));
+      for(const [u] of cands){
+        if(done) return;
+        await set(ref(db,'rooms/'+rid),{a:{reps:0,ready:false},b:{reps:0,ready:false},go:false});
+        if(await claim(u,rid)){ NET={rid,me:'b',foe:'a'}; finish(NET); return; }
+        await remove(ref(db,'rooms/'+rid));
+      }
+    };
+    scan();
+    iv=setInterval(scan,500);
+    setTimeout(()=>finish(null),6000);
   });
 }
 

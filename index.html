@@ -251,7 +251,10 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <h2>Ищем соперника</h2>
   <div class="spin"></div>
   <p class="wait" id="searchTxt">Подбираем по вашему уровню…</p>
-  <div class="row"><button class="ghost" id="searchCancel">Отмена</button></div>
+  <div class="row">
+    <button id="searchBot">Играть с ботом</button>
+    <button class="ghost" id="searchCancel">Отмена</button>
+  </div>
 </section>
 
 <section id="fr" class="sheet">
@@ -337,7 +340,7 @@ const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23
 const $=i=>document.getElementById(i), E={};
 ['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
  'bottom','stopb','stage','start','done','go','err','recal','voice','again','redo','home',
- 'dR','dS','dT','dB','play','friend','solo','search','searchTxt','searchCancel','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
+ 'dR','dS','dT','dB','play','friend','solo','search','searchTxt','searchCancel','searchBot','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plCoin','plXp','missions','mres'].forEach(k=>E[k]=$(k));
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
@@ -443,8 +446,10 @@ function endDuel(){
 /* ── связь через Firebase ── */
 const STALE=30000;          // записи старше — мусор
 const READY_WAIT=75000;     // столько ждём готовности соперника
+const SEARCH_MS=30000;      // столько ищем живого соперника
 
 let NET=null;               // {rid, me:'a'|'b', foe:'a'|'b'}
+let botNow=null;            // ранний выход из поиска к боту
 let roomRef=null, roomUnsub=null, queueRef=null, goneToDuel=false;
 
 function myLvl(){return level()}
@@ -486,17 +491,18 @@ async function findMatch(){
     });
 
     // 2) сам продолжаю осматриваться
-    let myTurn=false;
+    const t0s=Date.now();
     const scan=async()=>{
       if(done) return;
       let list={};
       try{ list=(await get(ref(db,'queue'))).val()||{}; }catch(e){ return; }
       const n=Object.keys(list).length;
-      E.searchTxt.textContent = n>1
-        ? 'В очереди '+n+'. '+(myTurn?'Связываю…':'Ждём, пока к нам подключатся…')
-        : 'Ждём соперника…';
       // инициативу берёт тот, чей идентификатор меньше: так не заберём друг друга
-      myTurn=Object.keys(list).some(u=>u!==UID && UID<u);
+      const myTurn=Object.keys(list).some(u=>u!==UID && UID<u);
+      const left=Math.max(0,Math.ceil((SEARCH_MS-(Date.now()-t0s))/1000));
+      E.searchTxt.innerHTML = (n>1
+        ? 'В очереди '+n+'. '+(myTurn?'Связываю…':'Ждём, пока к нам подключатся…')
+        : 'Пока никого. Ждём…')+'<br><span style="opacity:.6">ещё '+left+' сек</span>';
       const cands=Object.entries(list)
         .filter(([u,v])=>u!==UID && v && !v.rid && UID<u)
         .sort((a,b)=>(a[1].t||0)-(b[1].t||0));
@@ -507,9 +513,10 @@ async function findMatch(){
         await remove(ref(db,'rooms/'+rid));
       }
     };
+    botNow=()=>finish(null);
     scan();
     iv=setInterval(scan,500);
-    setTimeout(()=>finish(null),6000);
+    setTimeout(()=>finish(null),SEARCH_MS);
   });
 }
 
@@ -1068,6 +1075,7 @@ E.play.onclick=async()=>{
   else { leaveNet(); OPP=makeBot(); }
   begin();
 };
+E.searchBot.onclick=()=>{ if(botNow) botNow(); };
 E.searchCancel.onclick=()=>{
   searchCancelled=true;leaveNet();
   E.search.classList.remove('on');E.start.classList.add('on');

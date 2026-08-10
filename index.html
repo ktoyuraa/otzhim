@@ -116,6 +116,29 @@ h1 em{font-style:normal;color:var(--red)}
 .gear{background:none;border:none;color:#4A555C;font-family:'IBM Plex Mono',monospace;
   font-size:10px;letter-spacing:.14em;padding:6px 0;align-self:flex-start;cursor:pointer}
 .gear:hover{color:var(--dim)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{font-size:9.5px;letter-spacing:.14em;padding:10px 14px;
+  background:var(--panel);border:1px solid var(--line);color:var(--dim);border-radius:2px}
+.tab.on{color:var(--paper);border-color:var(--red)}
+.toplist{display:flex;flex-direction:column;gap:1px;max-height:52vh;overflow-y:auto}
+.tr{display:flex;align-items:baseline;gap:12px;padding:11px 13px;background:var(--panel);
+  border-left:2px solid var(--line)}
+.tr.me{border-left-color:var(--red);background:var(--panel2)}
+.tr .pos{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);min-width:2.4ch}
+.tr .who{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tr .val{font-family:'Oswald','Inter',sans-serif;font-size:20px;color:var(--paper)}
+.tr.me .val{color:var(--red)}
+.empty{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--dim);line-height:1.6}
+.nm{display:flex;flex-direction:column;gap:6px;width:100%;
+  font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--dim)}
+.nm input{font-family:'Oswald','Inter',sans-serif;font-size:20px;letter-spacing:.06em;
+  text-align:left;padding:12px 14px}
+.rec{display:flex;flex-direction:column;gap:3px;font-family:'IBM Plex Mono',monospace;
+  font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.rec b{font-family:'Oswald','Inter',sans-serif;font-size:26px;letter-spacing:.2em;
+  color:var(--red);text-transform:none}
+.rec span{font-size:9px;letter-spacing:.04em;text-transform:none;opacity:.7;line-height:1.5}
 .settings{display:none;flex-direction:column;gap:12px;align-items:flex-start;
   padding:12px 0 0;border-top:1px solid #1A2126}
 .settings.on{display:flex}
@@ -337,15 +360,27 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <div class="menu">
     <button id="play">Играть</button>
     <button id="missBtn">Миссии</button>
+    <button id="topBtn">Таблица лидеров</button>
     <button id="friend">Играть с другом</button>
     <button id="solo">Тренировка без соперника</button>
   </div>
   <p id="err" class="err"></p>
   <button id="gear" class="gear">Настройки</button>
   <div id="settings" class="settings">
+    <label class="nm">Ваше имя в таблице
+      <input type="text" id="nameIn" maxlength="16" placeholder="Игрок" autocomplete="off">
+    </label>
+    <div class="rec">Код восстановления <b id="recCode">—</b>
+      <span>перенесите прогресс на другой телефон: впишите этот код ниже</span>
+    </div>
+    <label class="nm">Восстановить по коду
+      <input type="text" id="recIn" maxlength="6" placeholder="XXXXXX" autocomplete="off">
+    </label>
+    <button class="ghost" id="recGo">Восстановить</button>
+    <p id="recMsg" class="wait" style="text-align:left"></p>
     <label class="tg"><input type="checkbox" id="voice"> Считать вслух</label>
     <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
-    <p class="ver">версия 35 · бои с записями игроков</p>
+    <p class="ver">версия 36 · профиль, имя и таблица лидеров</p>
   </div>
 </section>
 
@@ -354,6 +389,17 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <div class="spin"></div>
   <p class="wait" id="searchTxt">Подбираем по вашему уровню…</p>
   <div class="row"><button class="ghost" id="searchCancel">Отмена</button></div>
+</section>
+
+<section id="top" class="sheet">
+  <h2>Таблица лидеров</h2>
+  <div class="tabs">
+    <button class="tab on" data-k="total">По объёму</button>
+    <button class="tab" data-k="best">Рекорд подхода</button>
+    <button class="tab" data-k="streak">Серия дней</button>
+  </div>
+  <div id="topList" class="toplist"></div>
+  <div class="row"><button class="ghost" id="topBack">Назад</button></div>
 </section>
 
 <section id="miss" class="sheet">
@@ -454,7 +500,7 @@ const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23
 const $=i=>document.getElementById(i), E={};
 ['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
  'bottom','stopb','stage','start','done','go','err','recal','voice','again','home',
- 'dR','dS','dT','dB','dTotal','play','friend','solo','search','searchTxt','searchCancel','miss','missBtn','missBack','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','gear','settings','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plTotal','plXp','missions','mres'].forEach(k=>E[k]=$(k));
+ 'dR','dS','dT','dB','dTotal','play','friend','solo','search','searchTxt','searchCancel','top','topBtn','topBack','topList','miss','missBtn','missBack','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','gear','settings','nameIn','recCode','recIn','recGo','recMsg','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plTotal','plXp','missions','mres'].forEach(k=>E[k]=$(k));
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
@@ -534,7 +580,7 @@ function endDuel(){
   E.simwrap.classList.remove('on');
   if(NET) tx({t:'end',n:S.reps});
   if(S.times && S.times.length>=5){
-    tx({t:'ghost',reps:S.reps,times:S.times,lvl:level()});
+    tx({t:'ghost',reps:S.reps,times:S.times,lvl:level(),name:myName()});
   }
   tone(300,400,'sine');
 
@@ -553,6 +599,9 @@ function endDuel(){
   paintPlayer();
   E.duelend.classList.add('on');
 }
+
+const ABC='ACEFHJKLMNPRTUVWXY3479';
+function makeCode(n){let x='';for(let i=0;i<(n||5);i++)x+=ABC[Math.floor(Math.random()*ABC.length)];return x;}
 
 /* ── связь с сервером ── */
 const SEARCH_MS=5000;       // столько ждём живого, дальше берём запись
@@ -681,6 +730,30 @@ function loadPL(){
   if(!PL.done || typeof PL.done!=='object') PL.done={};
 }
 function savePL(){try{localStorage.setItem('otzhim.player',JSON.stringify(PL))}catch(e){}}
+
+/* код восстановления: он же опознаватель профиля на сервере */
+const PID=(()=>{ try{
+    let c=localStorage.getItem('otzhim.pid');
+    if(!c){ c=makeCode(6); localStorage.setItem('otzhim.pid',c); }
+    return c;
+  }catch(e){ return 'TEMP01'; } })();
+
+function myName(){ return (PL.name||'').trim() || 'Игрок'; }
+
+function syncUp(){                       // отдать профиль серверу
+  tx({t:'save',id:PID,name:myName(),total:PL.total,best:PL.best,
+      xp:PL.xp,streak:PL.streak,lastDay:PL.lastDay||''});
+}
+function applyProfile(p){                // принять с сервера, берём большее
+  if(!p) return;
+  PL.name   = p.name||PL.name;
+  PL.total  = Math.max(PL.total|0,  p.total|0);
+  PL.best   = Math.max(PL.best|0,   p.best|0);
+  PL.xp     = Math.max(PL.xp|0,     p.xp|0);
+  PL.streak = Math.max(PL.streak|0, p.streak|0);
+  if(p.lastDay) PL.lastDay=p.lastDay;
+  savePL(); paintPlayer();
+}
 function level(){return Math.floor(PL.xp/XP_LVL)+1}
 function num(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'\u2009');}
 
@@ -694,6 +767,7 @@ function applySet(reps){
     PL.lastDay=day;
   }
   savePL();
+  syncUp();
 }
 
 function paintPlayer(){
@@ -1069,6 +1143,30 @@ E.simbtn.onclick=()=>{
   E.reps.textContent=S.reps;
   tone(840,70);
 };
+E.topBtn.onclick=openTop;
+E.topBack.onclick=()=>{E.top.classList.remove('on');E.start.classList.add('on');};
+document.querySelectorAll('.tab').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); topKey=b.dataset.k; paintTop();
+  };
+});
+E.nameIn.oninput=()=>{ PL.name=E.nameIn.value.slice(0,16); savePL(); };
+E.nameIn.onchange=()=>{ syncUp(); };
+E.recGo.onclick=async()=>{
+  const c=(E.recIn.value||'').trim().toUpperCase();
+  if(c.length<6){ E.recMsg.textContent='Код из 6 символов'; return; }
+  E.recMsg.textContent='Ищу профиль…';
+  if(!(await connect())){ E.recMsg.textContent='Сервер недоступен'; return; }
+  on('profile',m=>{
+    applyProfile(m.p);
+    try{ localStorage.setItem('otzhim.pid',c); }catch(e){}
+    E.recCode.textContent=c;
+    E.recMsg.textContent='Готово. Прогресс перенесён.';
+  });
+  on('noprofile',()=>{ E.recMsg.textContent='Профиль с таким кодом не найден'; });
+  tx({t:'load',id:c});
+};
 E.missBtn.onclick=()=>{E.start.classList.remove('on');E.miss.classList.add('on');};
 E.missBack.onclick=()=>{E.miss.classList.remove('on');E.start.classList.add('on');};
 E.solo.onclick=()=>{MODE='solo';OPP=null;dropPeer();begin();};
@@ -1084,7 +1182,7 @@ E.play.onclick=async()=>{
   if(searchCancelled){ leaveNet(); return; }
   E.search.classList.remove('on');
   if(m&&m.ghost){                        // чужая запись
-    OPP={name:'Запись игрока',reps:0,bot:true,times:m.ghost.times};
+    OPP={name:(m.ghost.name||'Игрок')+' · запись',reps:0,bot:true,times:m.ghost.times};
     NET=null; tone(900,140);
   } else if(m){                          // живой человек
     OPP={name:'Соперник',reps:0,bot:false}; tone(900,140);
@@ -1121,9 +1219,49 @@ E.deHome.onclick=()=>{
 E.again.onclick=()=>flow(true);
 E.recal.onclick=()=>{C=null;try{localStorage.removeItem('otzhim6')}catch(e){}showRecal();};
 window.addEventListener('pagehide',()=>{try{leaveNet()}catch(e){}});
+/* ── таблица лидеров ── */
+let topData=null, topKey='total';
+const TOPLBL={total:'отжиманий',best:'в подходе',streak:'дней'};
+
+function paintTop(){
+  const rows=topData&&topData[topKey];
+  if(!rows){ E.topList.innerHTML='<p class="empty">Загружаю…</p>'; return; }
+  if(!rows.length){
+    E.topList.innerHTML='<p class="empty">Пока пусто.<br>Сделайте подход — и вы первый в списке.</p>';
+    return;
+  }
+  E.topList.innerHTML='';
+  rows.forEach((r,i)=>{
+    const d=document.createElement('div');
+    d.className='tr'+(r.name===myName()?' me':'');
+    const v = topKey==='total'?r.total : topKey==='best'?r.best : r.streak;
+    d.innerHTML='<span class="pos">'+(i+1)+'</span>'+
+      '<span class="who">'+r.name.replace(/[<>&]/g,'')+'</span>'+
+      '<span class="val">'+num(v)+'</span>';
+    E.topList.appendChild(d);
+  });
+}
+
+async function openTop(){
+  E.start.classList.remove('on'); E.top.classList.add('on');
+  topData=null; paintTop();
+  if(!(await connect())){ E.topList.innerHTML='<p class="empty">Сервер недоступен.</p>'; return; }
+  on('top',m=>{ topData=m; paintTop(); });
+  syncUp();
+  tx({t:'top'});
+}
+
 /* ── запуск ── */
 loadPL();
 paintPlayer();
+E.recCode.textContent=PID;
+E.nameIn.value=PL.name||'';
+connect().then(ok=>{
+  if(!ok) return;
+  on('profile',m=>applyProfile(m.p));
+  tx({t:'load',id:PID});
+  syncUp();
+});
 E.gear.onclick=()=>E.settings.classList.toggle('on');
 
 /* проверяем сервер при запуске и честно сообщаем, если он молчит */

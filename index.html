@@ -345,7 +345,7 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <div id="settings" class="settings">
     <label class="tg"><input type="checkbox" id="voice"> Считать вслух</label>
     <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
-    <p class="ver">версия 33 · разовый код, единый стиль кнопок</p>
+    <p class="ver">версия 34 · свой сервер вместо Firebase</p>
   </div>
 </section>
 
@@ -416,33 +416,32 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
 
 <script type="module">
 import { PoseLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
-let ref,set,get,update,remove,onValue,off,push,onDisconnect,serverTimestamp;
-let db=null, FB_OK=false, FB_ERR='';
+const WS_URL='wss://otzhim-server-production.up.railway.app';
 
-const FB={
-  apiKey:"AIzaSyAadVF_AvwAD4TuIlCmp2C1cw89Dj74sTU",
-  authDomain:"otzhim.firebaseapp.com",
-  databaseURL:"https://otzhim-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId:"otzhim",
-  storageBucket:"otzhim.firebasestorage.app",
-  messagingSenderId:"638338156542",
-  appId:"1:638338156542:web:8bc8b7568e364abf32a2af"
-};
-try{
-  const [appMod,dbMod]=await Promise.all([
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
-    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js")
-  ]);
-  ({ref,set,get,update,remove,onValue,off,push,onDisconnect,serverTimestamp}=dbMod);
-  db=dbMod.getDatabase(appMod.initializeApp(FB));
-  FB_OK=true;
-}catch(e){
-  FB_ERR=(e&&e.message)||'не удалось загрузить Firebase';
+let sock=null, NET_OK=false, NET_ERR='';
+const netHandlers={};                  // тип сообщения -> обработчик
+function on(t,fn){ netHandlers[t]=fn; }
+function tx(o){ try{ if(sock&&sock.readyState===1) sock.send(JSON.stringify(o)); }catch(e){} }
+
+function connect(){
+  return new Promise(res=>{
+    if(sock&&sock.readyState===1) return res(true);
+    try{ sock=new WebSocket(WS_URL); }catch(e){ NET_ERR=e.message; return res(false); }
+    let done=false;
+    const finish=v=>{ if(!done){ done=true; res(v); } };
+    sock.onopen=()=>{ NET_OK=true; NET_ERR=''; finish(true); };
+    sock.onerror=()=>{ NET_OK=false; NET_ERR='сервер недоступен'; finish(false); };
+    sock.onclose=()=>{ NET_OK=false; finish(false); };
+    sock.onmessage=ev=>{
+      let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      const h=netHandlers[m&&m.t];
+      if(h) h(m);
+    };
+    setTimeout(()=>finish(sock&&sock.readyState===1),6000);
+  });
 }
 
-const UID=(()=>{try{let u=localStorage.getItem('otzhim.uid');
-  if(!u){u=Math.random().toString(36).slice(2,10);localStorage.setItem('otzhim.uid',u);}
-  return u;}catch(e){return Math.random().toString(36).slice(2,10);}})();
+
 
 const VIS=0.35, HOLD=2000, MIN_REP=420, GRACE=600;
 const ELBOW_FRAC=0.45;    // локоть обязан пройти долю своего диапазона
@@ -532,12 +531,7 @@ function endDuel(){
   ended=true; phase='idle'; hint('');
   E.dhud.classList.remove('on'); E.gauge.classList.remove('on'); E.bottom.classList.remove('on');
   E.simwrap.classList.remove('on');
-  if(NET){
-    pushReps(S.reps);
-    if(NET.me==='a'){ stopHeartbeat();
-      const id=NET.rid; setTimeout(()=>{closeRoom(id);},1500); }
-  }
-  clearTimeout(readyTimer);
+  if(NET) tx({t:'end',n:S.reps});
   tone(300,400,'sine');
 
   const me=S.reps, op=OPP?OPP.reps:0;
@@ -556,288 +550,85 @@ function endDuel(){
   E.duelend.classList.add('on');
 }
 
-/* ── связь через Firebase ── */
-const READY_WAIT=75000;     // столько ждём готовности соперника
+/* ── связь с сервером ── */
 const SEARCH_MS=15000;      // столько ищем живого соперника
+let NET=null;               // {side:'a'|'b'} — есть, значит бой с человеком
+let FRCODE=null;            // разовый код, когда мы принимаем друга
 
-let NET=null;               // {rid, me:'a'|'b', foe:'a'|'b'}
-let roomRef=null, roomUnsub=null, goneToDuel=false;
+function leaveNet(){ if(NET||FRCODE) tx({t:'leave'}); NET=null; FRCODE=null; }
+function markReady(){ tx({t:'ready'}); }
+function pushReps(n){ if(NET) tx({t:'rep',n}); }
 
-function myLvl(){return level()}
-
-const HB_MS=1500;           // как часто хозяин подаёт признак жизни
-const PROBE_MS=1400;        // пауза, чтобы убедиться: хозяин живой
-let hbTimer=0;
-
-const ABC='ACEFHJKLMNPRTUVWXY3479';
-function makeCode(){let x='';for(let i=0;i<5;i++)x+=ABC[Math.floor(Math.random()*ABC.length)];return x;}
-let FRCODE=null;            // разовый код для игры с другом
-
-function startHeartbeat(path){
-  stopHeartbeat();
-  hbTimer=setInterval(()=>{
-    update(ref(db,path),{hb:Math.random().toString(36).slice(2)}).catch(()=>{});
-  },HB_MS);
-}
-function stopHeartbeat(){ if(hbTimer){clearInterval(hbTimer);hbTimer=0;} }
-
-const roomPath=code=>'rooms/'+code;
-
-let QID=null;               // разовый номер комнаты для быстрой игры
-
-/* открыть комнату; listed=true — объявить её в списке поиска */
-async function openRoom(id,listed){
-  const p=roomPath(id);
-  await set(ref(db,p),{a:{uid:UID,reps:0,ready:false},
-                       b:{uid:null,reps:0,ready:false},
-                       go:false,joined:false,hb:'0'});
-  try{ onDisconnect(ref(db,p)).remove(); }catch(e){}
-  if(listed){
-    await set(ref(db,'open/'+id),true);
-    try{ onDisconnect(ref(db,'open/'+id)).remove(); }catch(e){}
-  }
-  startHeartbeat(p);
-}
-async function closeRoom(id){
-  if(!id) return;
-  stopHeartbeat();
-  await remove(ref(db,'open/'+id)).catch(()=>{});
-  await remove(ref(db,roomPath(id))).catch(()=>{});
-}
-
-/* попытка зайти в чужую комнату; true — получилось */
-async function tryJoin(code,say){
-  const p=roomPath(code);
-  let v=null; try{ v=(await get(ref(db,p))).val(); }catch(e){ return false; }
-  if(!v){ remove(ref(db,'open/'+code)).catch(()=>{}); return false; }
-  if(v.joined===true) return false;
-
-  say&&say('Нашёл '+code+'. Проверяю…');
-  const hb1=v.hb;
-  await new Promise(r=>setTimeout(r,PROBE_MS));
-  let v2=null; try{ v2=(await get(ref(db,p))).val(); }catch(e){ return false; }
-  if(!v2){ remove(ref(db,'open/'+code)).catch(()=>{}); return false; }
-  if(v2.hb===hb1){                                  // хозяин не отвечает — сношу
-    say&&say('Комната брошена. Убираю…');
-    await remove(ref(db,p)).catch(()=>{});
-    await remove(ref(db,'open/'+code)).catch(()=>{});
-    return false;
-  }
-  if(v2.joined===true) return false;
-
-  await update(ref(db,p),{joined:true,'b/uid':UID});
-  await new Promise(r=>setTimeout(r,400));
-  let v3=null; try{ v3=(await get(ref(db,p))).val(); }catch(e){ return false; }
-  if(!v3||!v3.b||v3.b.uid!==UID) return false;      // меня опередили
-  NET={rid:code,me:'b',foe:'a'};
-  return true;
-}
-
+/* быстрый подбор: сервер сводит мгновенно, ждём только человека */
 async function findMatch(){
-  goneToDuel=false;
-  const t0s=Date.now();
+  const t0=Date.now();
   const say=txt=>{
-    const left=Math.max(0,Math.ceil((SEARCH_MS-(Date.now()-t0s))/1000));
+    const left=Math.max(0,Math.ceil((SEARCH_MS-(Date.now()-t0))/1000));
     E.searchTxt.innerHTML=txt+'<br><span style="opacity:.6">ещё '+left+' сек</span>';
   };
-
-  if(!FB_OK){ NET=null; return null; }
-  QID='q'+push(ref(db,'rooms')).key.slice(-10);
-  say('Ищем соперника…');
-  try{ await openRoom(QID,true); }catch(e){ say('Нет связи с базой…'); }
+  say('Соединяемся с сервером…');
+  if(!(await connect())){ say('Сервер недоступен'); return null; }
 
   return await new Promise(res=>{
-    let done=false, iv=0, busy=false;
-    const finish=async v=>{
-      if(done) return; done=true;
-      clearInterval(iv);
-      try{ off(ref(db,roomPath(QID)+'/joined')); }catch(e){}
-      if(!v || v.me==='b') await closeRoom(QID);   // свою комнату закрываем
-      res(v);
-    };
+    let done=false, tick=0;
+    const finish=v=>{ if(done)return; done=true; clearInterval(tick);
+      delete netHandlers.found; delete netHandlers.waiting; res(v); };
 
-    // ко мне зашли
-    const jr=ref(db,roomPath(QID)+'/joined');
-    onValue(jr,snap=>{
-      if(snap.val()===true && !done){
-        off(jr); NET={rid:QID,me:'a',foe:'b'}; finish(NET);
-      }
-    });
+    on('waiting',()=>say('Пока никого. Ждём соперника…'));
+    on('found',m=>{ NET={side:m.side}; finish(NET); });
 
-    // сам захожу в комнаты с кодом меньше моего
-    const step=async()=>{
-      if(done||busy) return;
-      busy=true;
-      try{
-        let list={};
-        try{ list=(await get(ref(db,'open'))).val()||{}; }catch(e){ say('Нет связи с базой…'); return; }
-        const cands=Object.keys(list).filter(c=>c!==QID && c<QID).sort();
-        if(!cands.length){
-          const n=Object.keys(list).length;
-          say(n>1 ? 'В сети '+n+'. Ждём, пока к нам подключатся…'
-                  : 'Пока никого. Ждём соперника…');
-          return;
-        }
-        for(const c of cands){
-          if(done) return;
-          if(await tryJoin(c,say)){ finish(NET); return; }
-        }
-      } finally { busy=false; }
-    };
-    step();
-    iv=setInterval(step,1000);
-    setTimeout(()=>{ if(!done){ NET=null; finish(null); } },SEARCH_MS);
+    tx({t:'find'});
+    say('Ищем соперника…');
+    tick=setInterval(()=>{ if(!done) say(E.searchTxt.dataset.msg||'Ищем соперника…'); },1000);
+    setTimeout(()=>{ if(!done){ tx({t:'cancel'}); finish(null); } },SEARCH_MS);
   });
 }
 
-/* ── друг заходит по личному коду ── */
+/* ── игра с другом ── */
 async function hostGame(){
   E.frPick.style.display='none'; E.frHostBox.style.display=''; E.frMsg.textContent='';
-  if(FRCODE) closeRoom(FRCODE);
-  FRCODE=makeCode();                       // каждый раз новый
-  E.frCode.textContent=FRCODE;
-  try{
-    await openRoom(FRCODE,false);
-    const jr=ref(db,roomPath(FRCODE)+'/joined');
-    onValue(jr,snap=>{
-      if(snap.val()===true){
-        off(jr);
-        NET={rid:FRCODE,me:'a',foe:'b'};
-        OPP={name:'Друг',reps:0,bot:false};
-        MODE='duel'; E.fr.classList.remove('on'); begin();
-      }
-    });
-  }catch(e){ E.frCode.textContent='—'; }
+  E.frCode.textContent='…';
+  if(!(await connect())){ E.frCode.textContent='—'; E.frMsg.textContent='Сервер недоступен'; return; }
+  on('code',m=>{ FRCODE=m.code; E.frCode.textContent=m.code; });
+  on('found',m=>{
+    NET={side:m.side}; OPP={name:'Друг',reps:0,bot:false};
+    MODE='duel'; E.fr.classList.remove('on'); begin();
+  });
+  tx({t:'host'});
 }
 
 async function joinGame(){
   const code=(E.frInput.value||'').trim().toUpperCase();
   if(code.length<5){ E.frMsg.textContent='Код из 5 символов'; return; }
-  if(code===FRCODE){ E.frMsg.textContent='Это ваш собственный код'; return; }
   E.frMsg.textContent='Подключаюсь…';
-  const ok=await tryJoin(code,t=>{E.frMsg.textContent=t;});
-  if(ok){
-    OPP={name:'Друг',reps:0,bot:false};
+  if(!(await connect())){ E.frMsg.textContent='Сервер недоступен'; return; }
+  on('nocode',()=>{ E.frMsg.textContent='Такой комнаты нет. Проверьте код.'; });
+  on('found',m=>{
+    NET={side:m.side}; OPP={name:'Друг',reps:0,bot:false};
     MODE='duel'; E.fr.classList.remove('on'); begin();
-  }else{
-    E.frMsg.textContent='Не удалось. Друг должен нажать «Создать код» и ждать.';
-  }
+  });
+  tx({t:'join',code});
 }
 
 function dropPeer(){ leaveNet(); }
 
-/* слушаем комнату: готовность, старт, счёт соперника */
-function watchRoom(onGo){
-  roomRef=ref(db,'rooms/'+NET.rid);
-  roomUnsub=onValue(roomRef,snap=>{
-    const v=snap.val(); if(!v) return;
-    const foe=v[NET.foe]||{};
-    if(OPP) OPP.reps=foe.reps||0;
-    if(v.go && !goneToDuel){ goneToDuel=true; onGo(); }
-    if(!v.go && phase!=='counting'){
-      hint(foe.ready ? 'Соперник готов. Начинаем…'
-                     : 'Вы готовы.<br><em>Ждём, пока соперник пройдёт калибровку.</em>');
-    }
-    // сторона «a» даёт старт, когда оба готовы
-    if(NET.me==='a' && !v.go && (v.a||{}).ready && (v.b||{}).ready){
-      update(roomRef,{go:true,at:serverTimestamp()}).catch(()=>{});
-    }
-  });
-}
-function markReady(){ update(ref(db,'rooms/'+NET.rid+'/'+NET.me),{ready:true}).catch(()=>{}); }
-function pushReps(n){ if(NET) update(ref(db,'rooms/'+NET.rid+'/'+NET.me),{reps:n}).catch(()=>{}); }
-function leaveNet(){
-  stopHeartbeat();
-  if(FB_OK){
-    if(QID){ remove(ref(db,'open/'+QID)).catch(()=>{}); remove(ref(db,roomPath(QID))).catch(()=>{}); QID=null; }
-    if(FRCODE){ remove(ref(db,roomPath(FRCODE))).catch(()=>{}); FRCODE=null; }
-  }
-  try{ if(roomRef&&roomUnsub) off(roomRef); }catch(e){}
-  roomRef=null;roomUnsub=null;NET=null;goneToDuel=false;
-}
-
-/* ── коды для друга: комната с именем-кодом ── */
-
-
-/* ── испытание на время ── */
-function startChallenge(c){
-  CH=c; MODE='chal'; OPP=null; chalOver=false;
-  leaveNet();
-  E.miss.classList.remove('on'); E.start.classList.remove('on');
-  begin();
-}
-
-function paintChal(left){
-  const mn=Math.floor(left/60), sc=Math.floor(left%60);
-  E.dClock.textContent=mn+':'+String(sc).padStart(2,'0');
-  E.dClock.classList.toggle('warn',left<=5);
-  E.dMe.textContent=S.reps||0;
-  E.dOpp.textContent=CH.reps;
-  E.dbarfill.style.width=Math.min(100,(S.reps||0)/CH.reps*100)+'%';
-}
-
-function chalTick(now){
-  const left=Math.max(0,(chalEnd-now)/1000);
-  paintChal(left);
-  if(chalOver) return;
-  if((S.reps||0)>=CH.reps) endChal(true);
-  else if(left<=0) endChal(false);
-}
-
-function startChal(){
-  E.hud.classList.remove('on');
-  E.dhud.classList.add('on');
-  E.dOppName.textContent='Цель';
-  chalOver=false;
-  paintChal(CH.secs);
-  countdown(()=>{ chalEnd=performance.now()+CH.secs*1000; });
-}
-
-function endChal(win){
-  chalOver=true; phase='idle'; hint('');
-  E.dhud.classList.remove('on'); E.gauge.classList.remove('on');
-  E.bottom.classList.remove('on'); E.simwrap.classList.remove('on');
-  tone(win?1200:220, win?420:400, win?'square':'sawtooth');
-
-  applySet(S.reps);
-  const first = !(PL.done[CH.id]&&PL.done[CH.id].win);
-  markChal(CH,S.reps,win);
-
-  E.deTitle.textContent = win ? 'Испытание пройдено' : 'Не успели';
-  E.deTitle.className='big '+(win?'win':'lose');
-  E.deMe.textContent=S.reps;
-  E.deOpp.textContent=CH.reps;
-  E.deReward.textContent = win
-    ? (first ? '+'+CH.xp+' опыта' : 'Опыт за это испытание уже получен')
-    : 'Нужно '+CH.reps+' за '+secLabel(CH.secs)+'. В этот раз '+S.reps+'.';
-  E.mres2.innerHTML='';
-  paintPlayer();
-  E.duelend.classList.add('on');
-}
-
 /* ── готовность после калибровки ── */
-let readyTimer=0;
 function afterCal(){
   if(MODE==='chal'){ startChal(); return; }
-  if(SIM&&MODE==='duel'&&!(OPP&&OPP.bot)){
-    hint('Заглушка готова.<br><em>Ждём соперника.</em>');
-    watchRoom(()=>{ clearTimeout(readyTimer); hint(''); E.simwrap.classList.add('on'); startDuel(); });
-    markReady();
-    clearTimeout(readyTimer);
-    readyTimer=setTimeout(()=>{ if(goneToDuel)return;
-      leaveNet(); OPP=makeBot(); hint(''); startDuel(); },READY_WAIT);
-    return;
-  }
   if(MODE==='solo'){ countdown(); return; }
-  if(OPP&&OPP.bot){ startDuel(); return; }
-  hint('Вы готовы.<br><em>Ждём соперника.</em>');
-  watchRoom(()=>{ clearTimeout(readyTimer); hint(''); startDuel(); });
+  if(OPP&&OPP.bot&&!NET){ startDuel(); return; }
+
+  hint('Вы готовы.<br><em>Ждём, пока соперник пройдёт калибровку.</em>');
+  on('go',()=>{ hint(''); if(SIM) E.simwrap.classList.add('on'); startDuel(); });
+  on('foe',m=>{ if(OPP) OPP.reps=m.n; });
+  on('over',m=>{ if(!ended){ if(OPP) OPP.reps = NET.side==='a'?m.b:m.a; endDuel(); } });
+  on('foegone',m=>{
+    if(ended) return;
+    if(OPP) OPP.reps=m.reps||0;
+    hint('Соперник отключился');
+    endDuel();
+  });
   markReady();
-  clearTimeout(readyTimer);
-  readyTimer=setTimeout(()=>{            // соперник пропал — играем с ботом
-    if(goneToDuel) return;
-    leaveNet(); OPP=makeBot(); hint(''); startDuel();
-  },READY_WAIT);
 }
 
 /* ═══════════ ПРОФИЛЬ И ИСПЫТАНИЯ ═══════════ */
@@ -1309,15 +1100,16 @@ loadPL();
 paintPlayer();
 E.gear.onclick=()=>E.settings.classList.toggle('on');
 
-if(!FB_OK){
+/* проверяем сервер при запуске и честно сообщаем, если он молчит */
+connect().then(ok=>{
+  if(ok) return;
   const bar=document.createElement('div');
   bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99;background:#E3072C;color:#fff;'+
     'font:600 12px/1.5 "IBM Plex Mono",monospace;padding:10px 14px;text-align:center';
-  bar.textContent='Сеть недоступна: '+FB_ERR+'. Бой с соперником не работает, остальное — да.';
+  bar.textContent='Сервер недоступен'+(NET_ERR?': '+NET_ERR:'')+'. Бой с человеком не работает, остальное — да.';
   document.body.appendChild(bar);
-  E.play.textContent='Играть с ботом';
   E.friend.disabled=true; E.friend.style.opacity='.4';
-}
+});
 
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&phase==='counting')finish();});
 </script>

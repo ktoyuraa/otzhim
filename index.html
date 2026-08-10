@@ -345,7 +345,7 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <div id="settings" class="settings">
     <label class="tg"><input type="checkbox" id="voice"> Считать вслух</label>
     <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
-    <p class="ver">версия 34 · свой сервер вместо Firebase</p>
+    <p class="ver">версия 35 · бои с записями игроков</p>
   </div>
 </section>
 
@@ -513,6 +513,7 @@ function startDuel(){
   E.hud.classList.remove('on');
   E.dhud.classList.add('on');
   E.dOppName.textContent=OPP?OPP.name:'Соперник';
+  E.dOppName.title=OPP&&OPP.bot?'забег записан ранее':'играет прямо сейчас';
   paintDuel(DUR);
   countdown(()=>{ duelEnd=performance.now()+DUR*1000; });
 }
@@ -532,6 +533,9 @@ function endDuel(){
   E.dhud.classList.remove('on'); E.gauge.classList.remove('on'); E.bottom.classList.remove('on');
   E.simwrap.classList.remove('on');
   if(NET) tx({t:'end',n:S.reps});
+  if(S.times && S.times.length>=5){
+    tx({t:'ghost',reps:S.reps,times:S.times,lvl:level()});
+  }
   tone(300,400,'sine');
 
   const me=S.reps, op=OPP?OPP.reps:0;
@@ -551,7 +555,7 @@ function endDuel(){
 }
 
 /* ── связь с сервером ── */
-const SEARCH_MS=15000;      // столько ищем живого соперника
+const SEARCH_MS=5000;       // столько ждём живого, дальше берём запись
 let NET=null;               // {side:'a'|'b'} — есть, значит бой с человеком
 let FRCODE=null;            // разовый код, когда мы принимаем друга
 
@@ -579,8 +583,23 @@ async function findMatch(){
 
     tx({t:'find'});
     say('Ищем соперника…');
-    tick=setInterval(()=>{ if(!done) say(E.searchTxt.dataset.msg||'Ищем соперника…'); },1000);
-    setTimeout(()=>{ if(!done){ tx({t:'cancel'}); finish(null); } },SEARCH_MS);
+    tick=setInterval(()=>{ if(!done) say('Ищем соперника…'); },1000);
+    setTimeout(()=>{
+      if(done) return;
+      tx({t:'cancel'});
+      // живого нет — просим запись чужого забега
+      E.searchTxt.innerHTML='Живых сейчас нет.<br><span style="opacity:.6">Берём запись другого игрока…</span>';
+      on('ghost',g=>{
+        delete netHandlers.ghost; delete netHandlers.noghost;
+        finish({ghost:g});
+      });
+      on('noghost',()=>{
+        delete netHandlers.ghost; delete netHandlers.noghost;
+        finish(null);
+      });
+      tx({t:'ghostreq',best:PL.best||0});
+      setTimeout(()=>{ if(!done) finish(null); },2500);
+    },SEARCH_MS);
   });
 }
 
@@ -868,6 +887,9 @@ function judge(now){
   S.combo=deep?Math.min(2,S.combo+0.2):1;
   S.score+=Math.round(10*(deep?1.5:1)*S.combo);
   E.reps.textContent=S.reps;E.score.textContent=S.score;
+  if(MODE==='duel'&&duelEnd){
+    S.times.push(+((DUR-Math.max(0,(duelEnd-now)/1000))).toFixed(1));
+  }
   if(MODE==='duel'){pushReps(S.reps);paintDuel(Math.max(0,(duelEnd-now)/1000));}
   tone(deep?1200:840,deep?110:75);say(S.reps);
 }
@@ -1061,8 +1083,12 @@ E.play.onclick=async()=>{
   clearTimeout(t1);
   if(searchCancelled){ leaveNet(); return; }
   E.search.classList.remove('on');
-  if(m){ OPP={name:'Соперник',reps:0,bot:false}; tone(900,140); }
-  else { leaveNet(); OPP=makeBot(); }
+  if(m&&m.ghost){                        // чужая запись
+    OPP={name:'Запись игрока',reps:0,bot:true,times:m.ghost.times};
+    NET=null; tone(900,140);
+  } else if(m){                          // живой человек
+    OPP={name:'Соперник',reps:0,bot:false}; tone(900,140);
+  } else { leaveNet(); OPP=makeBot(); }
   begin();
 };
 E.searchCancel.onclick=()=>{

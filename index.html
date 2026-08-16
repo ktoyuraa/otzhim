@@ -161,7 +161,17 @@ h2{font-family:'Oswald','Inter',sans-serif;font-size:clamp(28px,9vw,46px);letter
   color:var(--paper);letter-spacing:.04em}
 /* игрок и миссии */
 #player{display:flex;flex-direction:column;gap:9px}
-.cluster{display:flex;align-items:center;gap:26px}
+.cluster{position:relative;display:flex;align-items:center;gap:26px}
+.tapable{cursor:pointer;border:1px solid transparent;border-radius:3px;
+  padding:10px;margin:-10px;transition:border-color .15s}
+.tapable:hover,.tapable:focus-visible{border-color:var(--line);outline:none}
+.profhint{position:absolute;right:0;top:-4px;font-family:'IBM Plex Mono',monospace;
+  font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:#4A555C}
+.okmsg{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.08em;
+  color:var(--dim);align-self:center}
+.okmsg.ok{color:#3FCF6E}
+.warn{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;
+  color:var(--dim);line-height:1.6;opacity:.8}
 .dial{position:relative;width:142px;height:142px;flex:none}
 .dial svg{width:100%;height:100%;transform:rotate(0deg)}
 .dial path{fill:none;stroke-linecap:butt}
@@ -264,6 +274,12 @@ h2{font-family:'Oswald','Inter',sans-serif;font-size:clamp(28px,9vw,46px);letter
   letter-spacing:.2em;color:var(--red);text-transform:none}
 .mycode span{font-size:10px;letter-spacing:.04em;text-transform:none;opacity:.7}
 .menu{display:flex;flex-direction:column;gap:10px}
+#helloGo,#nameGo{background:linear-gradient(180deg,#F02742,var(--red) 45%,#A80520);
+  color:#fff;border:1px solid #FF5C74;letter-spacing:.22em;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+#helloGo{width:100%;padding:19px 30px}
+#helloGo:active,#nameGo:active{background:linear-gradient(180deg,#A80520,#E3072C)}
+.nm input[type=text]{text-align:left;letter-spacing:.04em}
 #play{position:relative;width:100%;padding:20px 30px;border-radius:2px;
   background:linear-gradient(180deg,#F02742,var(--red) 45%,#A80520);
   color:#fff;font-size:13px;letter-spacing:.28em;
@@ -337,8 +353,9 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
     <li data-n="02">Проверьте, что в кадр попадают плечи, таз и колени</li>
     <li data-n="03">Калибровка: верхняя точка и нижняя, по 2 секунды</li>
   </ul>
-  <div id="player">
+  <div id="player" class="tapable" role="button" tabindex="0">
     <div class="cluster">
+      <div class="profhint">профиль</div>
       <div class="dial">
         <svg viewBox="0 0 120 120" aria-hidden="true">
           <path class="dtrack" d="M25.5 94.5 A48 48 0 1 1 94.5 94.5" pathLength="100"/>
@@ -367,20 +384,9 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <p id="err" class="err"></p>
   <button id="gear" class="gear">Настройки</button>
   <div id="settings" class="settings">
-    <label class="nm">Ваше имя в таблице
-      <input type="text" id="nameIn" maxlength="16" placeholder="Игрок" autocomplete="off">
-    </label>
-    <div class="rec">Код восстановления <b id="recCode">—</b>
-      <span>перенесите прогресс на другой телефон: впишите этот код ниже</span>
-    </div>
-    <label class="nm">Восстановить по коду
-      <input type="text" id="recIn" maxlength="6" placeholder="XXXXXX" autocomplete="off">
-    </label>
-    <button class="ghost" id="recGo">Восстановить</button>
-    <p id="recMsg" class="wait" style="text-align:left"></p>
     <label class="tg"><input type="checkbox" id="voice"> Считать вслух</label>
     <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
-    <p class="ver">версия 36 · профиль, имя и таблица лидеров</p>
+    <p class="ver">версия 37 · профиль отдельным экраном</p>
   </div>
 </section>
 
@@ -389,6 +395,41 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <div class="spin"></div>
   <p class="wait" id="searchTxt">Подбираем по вашему уровню…</p>
   <div class="row"><button class="ghost" id="searchCancel">Отмена</button></div>
+</section>
+
+<section id="hello" class="sheet">
+  <h1>ОТ<em>ЖИМ</em></h1>
+  <p class="lede">Как вас называть? Имя увидят соперники и таблица лидеров.</p>
+  <label class="nm">Имя
+    <input type="text" id="helloIn" maxlength="16" placeholder="Игрок" autocomplete="off">
+  </label>
+  <p class="warn">Не вписывайте настоящие имя и фамилию — придумайте прозвище.</p>
+  <button id="helloGo">Продолжить</button>
+</section>
+
+<section id="prof" class="sheet">
+  <h2>Профиль</h2>
+  <label class="nm">Имя в таблице
+    <input type="text" id="nameIn" maxlength="16" placeholder="Игрок" autocomplete="off">
+  </label>
+  <div class="row">
+    <button id="nameGo">Сохранить</button>
+    <span id="nameMsg" class="okmsg"></span>
+  </div>
+
+  <div class="rec">Код восстановления <b id="recCode">—</b>
+    <span>запишите его. На другом телефоне впишите этот код ниже — прогресс переедет</span>
+  </div>
+
+  <label class="nm">Перенести прогресс сюда
+    <input type="text" id="recIn" maxlength="6" placeholder="XXXXXX" autocomplete="off">
+  </label>
+  <div class="row">
+    <button class="ghost" id="recGo">Восстановить</button>
+    <span id="recMsg" class="okmsg"></span>
+  </div>
+
+  <div class="row"><button class="ghost" id="profBack">Назад</button></div>
 </section>
 
 <section id="top" class="sheet">
@@ -500,7 +541,7 @@ const LINKS=[[11,13],[13,15],[12,14],[14,16],[11,12],[11,23],[12,24],[23,24],[23
 const $=i=>document.getElementById(i), E={};
 ['vid','skel','gauge','ball','hud','reps','clock','score','hint','bar','barfill','tick',
  'bottom','stopb','stage','start','done','go','err','recal','voice','again','home',
- 'dR','dS','dT','dB','dTotal','play','friend','solo','search','searchTxt','searchCancel','top','topBtn','topBack','topList','miss','missBtn','missBack','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','gear','settings','nameIn','recCode','recIn','recGo','recMsg','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','plLvl','plStrk','plTotal','plXp','missions','mres'].forEach(k=>E[k]=$(k));
+ 'dR','dS','dT','dB','dTotal','play','friend','solo','search','searchTxt','searchCancel','hello','helloIn','helloGo','prof','profBack','nameGo','nameMsg','top','topBtn','topBack','topList','miss','missBtn','missBack','fr','frPick','frHost','frJoin','frHostBox','frJoinBox','frCode','frInput','frGo','frMsg','frBack','gear','settings','nameIn','recCode','recIn','recGo','recMsg','simwrap','simbtn','dhud','dMe','dOpp','dOppName','dClock','dbarfill','duelend','deTitle','deMe','deOpp','deReward','deAgain','deHome','mres2','player','plLvl','plStrk','plTotal','plXp','missions','mres'].forEach(k=>E[k]=$(k));
 const cx=E.skel.getContext('2d');
 
 let lmk=null,stream=null,raf=null,lock=null;
@@ -1126,7 +1167,8 @@ function stopAll(){
   E.hud.classList.remove('on');E.gauge.classList.remove('on');
   E.bottom.classList.remove('on');E.bar.classList.remove('on');
   E.done.classList.remove('on');E.duelend.classList.remove('on');E.miss.classList.remove('on');
-  E.simwrap.classList.remove('on');E.dhud.classList.remove('on');E.search.classList.remove('on');E.fr.classList.remove('on');
+  E.simwrap.classList.remove('on');E.dhud.classList.remove('on');
+  E.prof.classList.remove('on');E.top.classList.remove('on');E.search.classList.remove('on');E.fr.classList.remove('on');
   MODE='solo';OPP=null;dropPeer();
   E.start.classList.add('on');
 }
@@ -1151,22 +1193,44 @@ document.querySelectorAll('.tab').forEach(b=>{
     b.classList.add('on'); topKey=b.dataset.k; paintTop();
   };
 });
-E.nameIn.oninput=()=>{ PL.name=E.nameIn.value.slice(0,16); savePL(); };
-E.nameIn.onchange=()=>{ syncUp(); };
+function openProf(){
+  E.start.classList.remove('on'); E.prof.classList.add('on');
+  E.nameIn.value=PL.name||''; E.recCode.textContent=PID;
+  E.nameMsg.textContent=''; E.recMsg.textContent=''; E.recIn.value='';
+}
+E.player.onclick=openProf;
+E.player.onkeydown=e=>{ if(e.key==='Enter'||e.key===' ') openProf(); };
+E.profBack.onclick=()=>{E.prof.classList.remove('on');E.start.classList.add('on');};
+
+E.nameGo.onclick=()=>{
+  PL.name=(E.nameIn.value||'').trim().slice(0,16);
+  savePL(); paintPlayer(); syncUp();
+  E.nameMsg.textContent='Сохранено'; E.nameMsg.className='okmsg ok';
+  setTimeout(()=>{E.nameMsg.textContent='';},2500);
+};
+
 E.recGo.onclick=async()=>{
   const c=(E.recIn.value||'').trim().toUpperCase();
-  if(c.length<6){ E.recMsg.textContent='Код из 6 символов'; return; }
-  E.recMsg.textContent='Ищу профиль…';
+  if(c.length<6){ E.recMsg.textContent='Код из 6 символов'; E.recMsg.className='okmsg'; return; }
+  E.recMsg.textContent='Ищу профиль…'; E.recMsg.className='okmsg';
   if(!(await connect())){ E.recMsg.textContent='Сервер недоступен'; return; }
   on('profile',m=>{
     applyProfile(m.p);
     try{ localStorage.setItem('otzhim.pid',c); }catch(e){}
-    E.recCode.textContent=c;
-    E.recMsg.textContent='Готово. Прогресс перенесён.';
+    E.recCode.textContent=c; E.nameIn.value=PL.name||'';
+    E.recMsg.textContent='Готово, прогресс перенесён'; E.recMsg.className='okmsg ok';
   });
-  on('noprofile',()=>{ E.recMsg.textContent='Профиль с таким кодом не найден'; });
+  on('noprofile',()=>{ E.recMsg.textContent='Профиль с таким кодом не найден'; E.recMsg.className='okmsg'; });
   tx({t:'load',id:c});
 };
+
+E.helloGo.onclick=()=>{
+  PL.name=(E.helloIn.value||'').trim().slice(0,16)||'Игрок';
+  savePL(); paintPlayer(); syncUp();
+  E.hello.classList.remove('on'); E.start.classList.add('on');
+};
+E.helloIn.onkeydown=e=>{ if(e.key==='Enter') E.helloGo.click(); };
+
 E.missBtn.onclick=()=>{E.start.classList.remove('on');E.miss.classList.add('on');};
 E.missBack.onclick=()=>{E.miss.classList.remove('on');E.start.classList.add('on');};
 E.solo.onclick=()=>{MODE='solo';OPP=null;dropPeer();begin();};
@@ -1256,6 +1320,7 @@ loadPL();
 paintPlayer();
 E.recCode.textContent=PID;
 E.nameIn.value=PL.name||'';
+if(!PL.name){ E.start.classList.remove('on'); E.hello.classList.add('on'); }
 connect().then(ok=>{
   if(!ok) return;
   on('profile',m=>applyProfile(m.p));

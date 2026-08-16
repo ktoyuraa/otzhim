@@ -389,7 +389,7 @@ input[type=text]:focus{outline:none;border-color:var(--hi)}
   <div id="settings" class="settings">
     <label class="tg"><input type="checkbox" id="voice"> Считать вслух</label>
     <button class="ghost" id="recal" style="display:none">Сбросить калибровку</button>
-    <p class="ver">версия 38 · пятнадцать миссий</p>
+    <p class="ver">версия 39 · связь с сервера восстанавливается сама</p>
   </div>
 </section>
 
@@ -513,15 +513,46 @@ const netHandlers={};                  // тип сообщения -> обра�
 function on(t,fn){ netHandlers[t]=fn; }
 function tx(o){ try{ if(sock&&sock.readyState===1) sock.send(JSON.stringify(o)); }catch(e){} }
 
+let netBar=null, reconnectAt=0;
+function showNetBar(show,txt){
+  if(show){
+    if(!netBar){
+      netBar=document.createElement('div');
+      netBar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99;background:#E3072C;'+
+        'color:#fff;font:600 11.5px/1.5 "IBM Plex Mono",monospace;padding:9px 14px;text-align:center';
+      document.body.appendChild(netBar);
+    }
+    netBar.textContent=txt;
+  } else if(netBar){ netBar.remove(); netBar=null; }
+}
+
 function connect(){
   return new Promise(res=>{
     if(sock&&sock.readyState===1) return res(true);
+    if(sock&&sock.readyState===0){                 // уже подключаемся — ждём
+      const t=setInterval(()=>{
+        if(!sock||sock.readyState>1){ clearInterval(t); res(false); }
+        else if(sock.readyState===1){ clearInterval(t); res(true); }
+      },120);
+      setTimeout(()=>{clearInterval(t);res(sock&&sock.readyState===1);},6000);
+      return;
+    }
     try{ sock=new WebSocket(WS_URL); }catch(e){ NET_ERR=e.message; return res(false); }
     let done=false;
     const finish=v=>{ if(!done){ done=true; res(v); } };
-    sock.onopen=()=>{ NET_OK=true; NET_ERR=''; finish(true); };
+    sock.onopen=()=>{
+      NET_OK=true; NET_ERR=''; showNetBar(false);
+      flushEv(); finish(true);
+    };
     sock.onerror=()=>{ NET_OK=false; NET_ERR='сервер недоступен'; finish(false); };
-    sock.onclose=()=>{ NET_OK=false; finish(false); };
+    sock.onclose=()=>{
+      NET_OK=false; finish(false);
+      // тихо пробуем вернуться, не мешая игре
+      if(Date.now()-reconnectAt>4000){
+        reconnectAt=Date.now();
+        setTimeout(()=>{ sock=null; connect(); },4000);
+      }
+    };
     sock.onmessage=ev=>{
       let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
       const h=netHandlers[m&&m.t];
@@ -1421,8 +1452,18 @@ E.recCode.textContent=PID;
 E.nameIn.value=PL.name||'';
 if(!PL.name){ E.start.classList.remove('on'); E.hello.classList.add('on'); }
 ev('open');
-connect().then(ok=>{
-  if(!ok) return;
+connect().then(async ok=>{
+  if(!ok){
+    await new Promise(r=>setTimeout(r,2500));
+    sock=null;
+    ok=await connect();
+    if(!ok){
+      showNetBar(true,'Нет связи с сервером. Бой с человеком недоступен, остальное работает.');
+      E.friend.disabled=true; E.friend.style.opacity='.4';
+      return;
+    }
+  }
+  E.friend.disabled=false; E.friend.style.opacity='';
   on('profile',m=>applyProfile(m.p));
   tx({t:'load',id:PID});
   syncUp();
@@ -1431,15 +1472,7 @@ connect().then(ok=>{
 E.gear.onclick=()=>E.settings.classList.toggle('on');
 
 /* проверяем сервер при запуске и честно сообщаем, если он молчит */
-connect().then(ok=>{
-  if(ok) return;
-  const bar=document.createElement('div');
-  bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99;background:#E3072C;color:#fff;'+
-    'font:600 12px/1.5 "IBM Plex Mono",monospace;padding:10px 14px;text-align:center';
-  bar.textContent='Сервер недоступен'+(NET_ERR?': '+NET_ERR:'')+'. Бой с человеком не работает, остальное — да.';
-  document.body.appendChild(bar);
-  E.friend.disabled=true; E.friend.style.opacity='.4';
-});
+
 
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&phase==='counting')finish();});
 </script>
